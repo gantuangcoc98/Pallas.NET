@@ -2,18 +2,16 @@ use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 use pallas::{
-    ledger::{
-        addresses::{Address, ByronAddress},
-        traverse::MultiEraBlock,
-    },
-    network::{
+    codec::utils::KeepRaw, ledger::{
+        addresses::{Address, ByronAddress}, primitives::conway::{PlutusData, PseudoDatumOption}, traverse::MultiEraBlock
+    }, network::{
         facades::NodeClient,
         miniprotocols::{
             chainsync::{self},
             Point as PallasPoint, MAINNET_MAGIC, PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC,
             TESTNET_MAGIC, localstate::queries_v16,
         },
-    },
+    }
 };
 use rnet::{net, Net};
 use tokio::runtime::Runtime;
@@ -23,6 +21,9 @@ rnet::root!();
 lazy_static! {
     static ref RT: Runtime = Runtime::new().expect("Failed to create Tokio runtime");
 }
+
+const DATUM_TYPE_HASH: u8 = 1;
+const DATUM_TYPE_DATA: u8 = 2;
 
 #[derive(Net)]
 pub struct NetworkMagic {}
@@ -68,6 +69,7 @@ pub struct TransactionBody {
     id: Vec<u8>,
     inputs: Vec<TransactionInput>,
     outputs: Vec<TransactionOutput>,
+    index: usize
 }
 
 #[derive(Net)]
@@ -76,11 +78,19 @@ pub struct TransactionInput {
     index: u64,
 }
 
+
+#[derive(Net)]
+struct Datum {
+    datum_type: u8,
+    data: Option<Vec<u8>>,
+}
+
 #[derive(Net)]
 pub struct TransactionOutput {
     address: Vec<u8>,
     amount: Value,
     index: usize,
+    datum: Option<Datum>,
 }
 
 #[derive(Net)]
@@ -103,6 +113,22 @@ pub struct NextResponse {
 #[derive(Net)]
 pub struct NodeClientWrapper {
     client_ptr: usize,
+}
+
+fn convert_to_datum(datum: PseudoDatumOption<KeepRaw<'_, PlutusData>>) -> Datum {
+    match datum {
+        PseudoDatumOption::Hash(hash) => Datum {
+            datum_type: DATUM_TYPE_HASH,
+            data: Some(hash.to_vec()),
+        },
+        PseudoDatumOption::Data(keep_raw) => {
+            let raw_data = keep_raw.raw_cbor().to_vec();
+            Datum {
+                datum_type: DATUM_TYPE_DATA,
+                data: Some(raw_data),
+            }
+        },
+    }
 }
 
 impl NodeClientWrapper {
@@ -225,8 +251,10 @@ impl NodeClientWrapper {
                                 transaction_bodies: b
                                     .txs()
                                     .into_iter()
-                                    .map(|tx_body| TransactionBody {
+                                    .enumerate()
+                                    .map(|(index, tx_body)| TransactionBody {
                                         id: tx_body.hash().to_vec(),
+                                        index,
                                         inputs: tx_body
                                             .inputs()
                                             .into_iter()
@@ -242,6 +270,9 @@ impl NodeClientWrapper {
                                             .map(|(index, tx_output)| TransactionOutput {
                                                 index,
                                                 address: tx_output.address().unwrap().to_vec(),
+                                                datum: tx_output
+                                                    .datum()
+                                                    .map(convert_to_datum),
                                                 amount: Value {
                                                     coin: tx_output.lovelace_amount(),
                                                     multi_asset: tx_output
