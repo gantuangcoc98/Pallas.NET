@@ -17,10 +17,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
+
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="cargo build --release --manifest-path ../pallas-dotnet-rs/Cargo.toml" />
-    <Exec Command="cp ../pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so $(ProjectDir)/libpallas_dotnet_rs.so" />
-    <Exec Command="rnet-gen ../pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so &gt; $(ProjectDir)/PallasDotnetWrapper.cs" />
+    <Exec Command="./build-rs.sh" />
   </Target>
 
   <ItemGroup>
