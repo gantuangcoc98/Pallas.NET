@@ -12,5 +12,6 @@ public record TransactionOutput (
     Address Address,
     Value Amount,
     nuint Index,
-    Datum? Datum
+    Datum? Datum,
+    byte[] Raw
 );

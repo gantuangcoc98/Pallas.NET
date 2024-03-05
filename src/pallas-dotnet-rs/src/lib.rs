@@ -98,6 +98,7 @@ pub struct TransactionOutput {
     amount: Value,
     index: usize,
     datum: Option<Datum>,
+    Raw: Vec<u8>,
 }
 
 #[derive(Net)]
@@ -286,6 +287,7 @@ impl NodeClientWrapper {
                                                 index,
                                                 address: tx_output.address().unwrap().to_vec(),
                                                 datum: tx_output.datum().map(convert_to_datum),
+                                                Raw: tx_output.encode(),
                                                 amount: Value {
                                                     coin: tx_output.lovelace_amount(),
                                                     multi_asset: tx_output

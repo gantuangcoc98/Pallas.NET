@@ -47,7 +47,8 @@ public class Utils
                     : new Datum(
                         (DatumType)rsTransactionOutput.datum.datumType,
                         [.. rsTransactionOutput.datum.data]
-                    )
+                    ),
+            [.. rsTransactionOutput.raw]
         );
 
     public static Value MapPallasValue(PallasDotnetRs.PallasDotnetRs.Value rsValue)

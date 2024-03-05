@@ -71,6 +71,7 @@ nodeClient.ChainSyncNextResponse += (sender, args) =>
     table.AddRow("[green]Output Count[/]", outputCount.ToString());
     table.AddRow("[green]Assets Count[/]", assetsCount.ToString());
     table.AddRow("[green]Datum Count[/]", datumCount.ToString());
+    table.AddRow("[green]Output Cbor[/]", Convert.ToHexString(nextResponse.Block.TransactionBodies.FirstOrDefault()?.Outputs.FirstOrDefault()?.Raw ?? []));
 
     var totalADAFormatted = (totalADAOutput / 1000000m).ToString("N6") + " ADA";
     table.AddRow("[green]Total ADA Output[/]", totalADAFormatted);
