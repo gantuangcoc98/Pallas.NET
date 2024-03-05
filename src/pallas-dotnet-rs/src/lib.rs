@@ -238,7 +238,15 @@ impl NodeClientWrapper {
             let mut client = Box::from_raw(client_ptr);
 
             // Get the next block
-            let result = RT.block_on(async { client.chainsync().request_next().await });
+            let result = RT.block_on(async {
+                if client.chainsync().has_agency() {
+                    // When the client has the agency, send a request for the next block
+                    client.chainsync().request_next().await
+                } else {
+                    // When the client does not have the agency, wait for the server's response
+                    client.chainsync().recv_while_must_reply().await
+                }
+            });
 
             let next_response = match result {
                 Ok(next) => match next {
