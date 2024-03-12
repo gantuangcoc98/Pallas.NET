@@ -4,5 +4,6 @@ public record TransactionBody(
     Hash Id,
     IEnumerable<TransactionInput> Inputs,
     IEnumerable<TransactionOutput> Outputs,
-    ulong Index
+    ulong Index,
+    byte[] Raw
 );
