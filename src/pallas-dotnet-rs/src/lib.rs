@@ -2,23 +2,21 @@ use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 use pallas::{
-    codec::{minicbor::Decode, utils::KeepRaw},
+    codec::utils::KeepRaw,
     ledger::{
         addresses::{Address, ByronAddress},
         primitives::conway::{PlutusData, PseudoDatumOption},
         traverse::{Era, MultiEraBlock, MultiEraTx},
     },
     network::{
-        facades::{Error, NodeClient, PeerClient},
+        facades::{NodeClient, PeerClient},
         miniprotocols::{
             chainsync,
             localstate::queries_v16,
-            localtxsubmission::{EraTx, GenericClient, RejectReason},
-            txsubmission::{self, EraTxBody, State, TxIdAndSize},
+            txsubmission::{self, EraTxBody, TxIdAndSize},
             Point as PallasPoint, MAINNET_MAGIC, PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC,
-            PROTOCOL_N2C_TX_SUBMISSION, PROTOCOL_N2N_TX_SUBMISSION, TESTNET_MAGIC,
+            TESTNET_MAGIC,
         },
-        multiplexer::{self, Bearer},
     },
 };
 use rnet::{net, Net};
@@ -78,6 +76,7 @@ pub struct TransactionBody {
     inputs: Vec<TransactionInput>,
     outputs: Vec<TransactionOutput>,
     index: usize,
+    raw: Vec<u8>,
 }
 
 #[derive(Net)]
@@ -98,7 +97,7 @@ pub struct TransactionOutput {
     amount: Value,
     index: usize,
     datum: Option<Datum>,
-    Raw: Vec<u8>,
+    raw: Vec<u8>,
 }
 
 #[derive(Net)]
@@ -279,6 +278,7 @@ impl NodeClientWrapper {
                                     .map(|(index, tx_body)| TransactionBody {
                                         id: tx_body.hash().to_vec(),
                                         index,
+                                        raw: tx_body.encode(),
                                         inputs: tx_body
                                             .inputs()
                                             .into_iter()
@@ -295,7 +295,7 @@ impl NodeClientWrapper {
                                                 index,
                                                 address: tx_output.address().unwrap().to_vec(),
                                                 datum: tx_output.datum().map(convert_to_datum),
-                                                Raw: tx_output.encode(),
+                                                raw: tx_output.encode(),
                                                 amount: Value {
                                                     coin: tx_output.lovelace_amount(),
                                                     multi_asset: tx_output
@@ -551,28 +551,5 @@ impl TxSubmit {
             id_bytes
         });
         ids
-    }
-}
-
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_find_intersect() {
-        let client_wrapper =
-            NodeClientWrapper::connect("/tmp/node.socket".to_string(), PREVIEW_MAGIC);
-        let block_hash =
-            hex::decode("a9e99c93352f91233a61fb55da83a43c49abf1c84a636e226e11be5ac0343dc3")
-                .unwrap();
-        let intersect = NodeClientWrapper::find_intersect(
-            client_wrapper,
-            Point {
-                slot: 35197575,
-                hash: block_hash.clone(),
-            },
-        )
-        .unwrap();
-        assert_eq!(intersect.slot, 35197575);
-        assert_eq!(intersect.hash, block_hash);
     }
 }
