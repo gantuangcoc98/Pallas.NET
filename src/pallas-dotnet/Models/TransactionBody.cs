@@ -9,5 +9,6 @@ public record TransactionBody(
     IEnumerable<TransactionOutput> Outputs,
     Dictionary<Hash,Dictionary<Hash,long>> Mint,
     JsonElement? MetaData,
+    IEnumerable<Redeemer>? Redeemers,
     byte[] Raw
 );

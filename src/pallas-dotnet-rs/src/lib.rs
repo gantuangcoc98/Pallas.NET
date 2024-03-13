@@ -2,13 +2,11 @@ use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 use pallas::{
-    codec::utils::KeepRaw,
-    ledger::{
+    codec::{minicbor::{self, Encode}, utils::KeepRaw}, ledger::{
         addresses::{Address, ByronAddress},
-        primitives::conway::{PlutusData, PseudoDatumOption},
-        traverse::{Era, MultiEraBlock, MultiEraTx},
-    },
-    network::{
+        primitives::{alonzo, conway::{PlutusData, PseudoDatumOption}},
+        traverse::{Era, MultiEraBlock, MultiEraMeta, MultiEraTx},
+    }, network::{
         facades::{NodeClient, PeerClient},
         miniprotocols::{
             chainsync,
@@ -17,7 +15,7 @@ use pallas::{
             Point as PallasPoint, MAINNET_MAGIC, PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC,
             TESTNET_MAGIC,
         },
-    },
+    }
 };
 use rnet::{net, Net};
 use tokio::runtime::Runtime;
@@ -75,7 +73,10 @@ pub struct TransactionBody {
     id: Vec<u8>,
     inputs: Vec<TransactionInput>,
     outputs: Vec<TransactionOutput>,
+    mint: HashMap<PolicyId, HashMap<AssetName, MintCoin>>,
     index: usize,
+    metadata: String,
+    redeemers: Vec<Redeemer>,
     raw: Vec<u8>,
 }
 
@@ -106,9 +107,25 @@ pub struct Value {
     multi_asset: HashMap<PolicyId, HashMap<AssetName, Coin>>,
 }
 
+#[derive(Net)]
+pub struct Redeemer {
+    tag: RedeemerTag,
+    index: u32,
+    data: Vec<u8>,
+    ex_units: ExUnits,
+}
+
+#[derive(Net)]
+pub struct ExUnits {
+    pub mem: u32,
+    pub steps: u64,
+}
+
 pub type Coin = u64;
+pub type MintCoin = i64;
 pub type PolicyId = Vec<u8>;
 pub type AssetName = Vec<u8>;
+pub type RedeemerTag = u8;
 
 #[derive(Net)]
 pub struct NextResponse {
@@ -279,6 +296,29 @@ impl NodeClientWrapper {
                                         id: tx_body.hash().to_vec(),
                                         index,
                                         raw: tx_body.encode(),
+                                        mint: tx_body.mints().iter().map(|mint_ma| {
+                                            (
+                                                mint_ma.policy().to_vec(),
+                                                mint_ma.assets()
+                                                    .iter()
+                                                    .map(|a| (a.name().to_vec(), a.mint_coin().unwrap()))
+                                                    .collect(),
+                                            )
+                                        }).collect(),
+                                        // metadata: serde_json::to_string(tx_body.metadata().as_alonzo().unwrap()).unwrap(),
+                                        metadata: match tx_body.metadata() {
+                                            MultiEraMeta::AlonzoCompatible(x) => serde_json::to_string(x).unwrap(),
+                                            _ => "".to_string(),
+                                        },
+                                        redeemers: tx_body.redeemers().iter().map(|redeemer| Redeemer {
+                                            tag: redeemer_tag_to_u8(&redeemer.tag),
+                                            index: redeemer.index,
+                                            data: plutus_data_to_keep_raw(&redeemer.data),
+                                            ex_units: ExUnits {
+                                                mem: redeemer.ex_units.mem,
+                                                steps: redeemer.ex_units.steps,
+                                            },
+                                        }).collect(),
                                         inputs: tx_body
                                             .inputs()
                                             .into_iter()
@@ -425,7 +465,7 @@ impl NodeClientWrapper {
     }
 }
 
-pub fn era_to_u16(era: Era) -> u16 {
+fn era_to_u16(era: Era) -> u16 {
     match era {
         Era::Byron => 0,
         Era::Shelley => 1,
@@ -435,6 +475,14 @@ pub fn era_to_u16(era: Era) -> u16 {
         Era::Babbage => 5,
         Era::Conway => 6,
         _ => 7, // Assume a future era
+    }
+}
+fn redeemer_tag_to_u8(tag: &alonzo::RedeemerTag) -> u8 {
+    match tag {
+        alonzo::RedeemerTag::Spend => 0,
+        alonzo::RedeemerTag::Mint => 1,
+        alonzo::RedeemerTag::Cert => 2,
+        alonzo::RedeemerTag::Reward => 3,
     }
 }
 
@@ -452,6 +500,13 @@ fn convert_to_datum(datum: PseudoDatumOption<KeepRaw<'_, PlutusData>>) -> Datum 
             }
         }
     }
+}
+
+fn plutus_data_to_keep_raw(plutus_data: &PlutusData) -> Vec<u8> {
+    let mut buffer = Vec::new(); // A buffer to hold the encoded data
+    let mut encoder = minicbor::Encoder::new(&mut buffer);
+    plutus_data.encode(&mut encoder,  &mut ());
+    buffer
 }
 
 #[derive(Net)]

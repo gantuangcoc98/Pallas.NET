@@ -32,6 +32,12 @@ public class Utils
             rsTransactionBody.outputs.Select(MapPallasTransactionOutput),
             MapPallasMultiAsset(rsTransactionBody.mint),
             rsTransactionBody.metadata != string.Empty ? JsonSerializer.Deserialize<JsonElement>(rsTransactionBody.metadata) : null,
+            rsTransactionBody.redeemers?.Select(r => new Redeemer(
+                (RedeemerTag)r.tag,
+                r.index,
+                [.. r.data],
+                new ExUnits(r.exUnits.mem, r.exUnits.steps)
+            )),
             [.. rsTransactionBody.raw]
         );
 
