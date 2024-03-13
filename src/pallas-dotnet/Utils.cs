@@ -1,3 +1,5 @@
+using System.Numerics;
+using System.Text.Json;
 using PallasDotnet.Models;
 
 namespace PallasDotnet;
@@ -25,9 +27,11 @@ public class Utils
     public static TransactionBody MapPallasTransactionBody(PallasDotnetRs.PallasDotnetRs.TransactionBody rsTransactionBody)
         => new(
             new Hash([.. rsTransactionBody.id]),
+            rsTransactionBody.index,
             rsTransactionBody.inputs.Select(MapPallasTransactionInput),
             rsTransactionBody.outputs.Select(MapPallasTransactionOutput),
-            rsTransactionBody.index,
+            MapPallasMultiAsset(rsTransactionBody.mint),
+            rsTransactionBody.metadata != string.Empty ? JsonSerializer.Deserialize<JsonElement>(rsTransactionBody.metadata) : null,
             [.. rsTransactionBody.raw]
         );
 
@@ -58,7 +62,7 @@ public class Utils
             MapPallasMultiAsset(rsValue.multiAsset)
         );
 
-    public static Dictionary<Hash, Dictionary<Hash, ulong>> MapPallasMultiAsset(Dictionary<List<byte>, Dictionary<List<byte>, ulong>> rsMultiAsset)
+    public static Dictionary<Hash, Dictionary<Hash, T>> MapPallasMultiAsset<T>(Dictionary<List<byte>, Dictionary<List<byte>, T>> rsMultiAsset) where T : INumber<T>
         => rsMultiAsset.ToDictionary(
             k => new Hash([.. k.Key]),
             v => v.Value.ToDictionary(
