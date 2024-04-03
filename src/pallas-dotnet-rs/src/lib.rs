@@ -10,7 +10,7 @@ use pallas::{
         addresses::{Address, ByronAddress},
         primitives::{
             alonzo,
-            conway::{PlutusData, PseudoDatumOption},
+            conway::{self, PlutusData, PseudoDatumOption},
         },
         traverse::{Era, MultiEraBlock, MultiEraMeta, MultiEraTx},
     },
@@ -371,12 +371,12 @@ impl NodeClientWrapper {
                                             .redeemers()
                                             .iter()
                                             .map(|redeemer| Redeemer {
-                                                tag: redeemer_tag_to_u8(&redeemer.tag),
-                                                index: redeemer.index,
-                                                data: plutus_data_to_keep_raw(&redeemer.data),
+                                                tag: redeemer_tag_to_u8(&redeemer.tag()),
+                                                index: redeemer.index(),
+                                                data: plutus_data_to_keep_raw(redeemer.data()),
                                                 ex_units: ExUnits {
-                                                    mem: redeemer.ex_units.mem,
-                                                    steps: redeemer.ex_units.steps,
+                                                    mem: redeemer.ex_units().mem,
+                                                    steps: redeemer.ex_units().steps,
                                                 },
                                             })
                                             .collect(),
@@ -552,12 +552,14 @@ fn u16_to_era(era: u16) -> Era {
     }
 }
 
-fn redeemer_tag_to_u8(tag: &alonzo::RedeemerTag) -> u8 {
+fn redeemer_tag_to_u8(tag: &conway::RedeemerTag) -> u8 {
     match tag {
-        alonzo::RedeemerTag::Spend => 0,
-        alonzo::RedeemerTag::Mint => 1,
-        alonzo::RedeemerTag::Cert => 2,
-        alonzo::RedeemerTag::Reward => 3,
+        conway::RedeemerTag::Spend => 0,
+        conway::RedeemerTag::Mint => 1,
+        conway::RedeemerTag::Cert => 2,
+        conway::RedeemerTag::Reward => 3,
+        conway::RedeemerTag::Vote => 4,
+        conway::RedeemerTag::Propose => 5,
     }
 }
 
