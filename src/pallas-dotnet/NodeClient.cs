@@ -105,6 +105,16 @@ public class NodeClient
         });
     }
 
+    public async Task<List<byte[]>> GetUtxoByAddressCborAsync(string address)
+    {
+        if (_nodeClient is null)
+        {
+            throw new Exception("Not connected to node");
+        }
+        var utxoByAddress = await Task.Run(() => PallasDotnetRs.PallasDotnetRs.GetUtxoByAddressCbor(_nodeClient.Value, address));
+        return utxoByAddress?.Select(utxo => utxo.ToArray()).ToList() ?? [];
+    }
+
     public void StopSync()
     {
         IsSyncing = false;

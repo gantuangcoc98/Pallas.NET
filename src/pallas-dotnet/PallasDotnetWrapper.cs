@@ -99,6 +99,12 @@ namespace PallasDotnetRs
         ) {
             return (_FnConnect(_AllocStr(socketPath),networkMagic)).Decode();
         }
+        public static List<List<byte>> GetUtxoByAddressCbor(
+            NodeClientWrapper clientWrapper,
+            string address
+        ) {
+            return _FreeSlice<List<byte>, _RawSlice, List<List<byte>>>(_FnGetUtxoByAddressCbor(_StructNodeClientWrapper.Encode(clientWrapper),_AllocStr(address)), 16, 8, _arg1 => _FreeSlice<byte, byte, List<byte>>(_arg1, 1, 1, _arg2 => _arg2));
+        }
         public static Point GetTip(
             NodeClientWrapper clientWrapper
         ) {
@@ -108,7 +114,7 @@ namespace PallasDotnetRs
             NodeClientWrapper clientWrapper,
             Point knownPoint
         ) {
-            return _DecodeOption(_FnFindIntersect(_StructNodeClientWrapper.Encode(clientWrapper),_StructPoint.Encode(knownPoint)), _arg1 => (_arg1).Decode());
+            return _DecodeOption(_FnFindIntersect(_StructNodeClientWrapper.Encode(clientWrapper),_StructPoint.Encode(knownPoint)), _arg3 => (_arg3).Decode());
         }
         public static NextResponse ChainSyncNext(
             NodeClientWrapper clientWrapper
@@ -128,14 +134,14 @@ namespace PallasDotnetRs
         public static string AddressBytesToBech32(
             IReadOnlyCollection<byte> addressBytes
         ) {
-            return _FreeStr(_FnAddressBytesToBech32(_AllocSlice<byte, byte>(addressBytes, 1, 1, _arg2 => _arg2)));
+            return _FreeStr(_FnAddressBytesToBech32(_AllocSlice<byte, byte>(addressBytes, 1, 1, _arg4 => _arg4)));
         }
         public static List<byte> SubmitTx(
             string server,
             ulong magic,
             IReadOnlyCollection<byte> tx
         ) {
-            return _FreeSlice<byte, byte, List<byte>>(_FnSubmitTx(_AllocStr(server),magic,_AllocSlice<byte, byte>(tx, 1, 1, _arg3 => _arg3)), 1, 1, _arg4 => _arg4);
+            return _FreeSlice<byte, byte, List<byte>>(_FnSubmitTx(_AllocStr(server),magic,_AllocSlice<byte, byte>(tx, 1, 1, _arg5 => _arg5)), 1, 1, _arg6 => _arg6);
         }
         [StructLayout(LayoutKind.Sequential)]
         private struct _StructNetworkMagic {
@@ -155,13 +161,13 @@ namespace PallasDotnetRs
             public static _StructPoint Encode(Point structArg) {
                 return new _StructPoint {
                     slot = structArg.slot,
-                    hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg5 => _arg5)
+                    hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg7 => _arg7)
                 };
             }
             public Point Decode() {
                 return new Point {
                     slot = this.slot,
-                    hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg6 => _arg6)
+                    hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg8 => _arg8)
                 };
             }
         }
@@ -174,17 +180,17 @@ namespace PallasDotnetRs
             public static _StructBlock Encode(Block structArg) {
                 return new _StructBlock {
                     slot = structArg.slot,
-                    hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg7 => _arg7),
+                    hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg9 => _arg9),
                     number = structArg.number,
-                    transactionBodies = _AllocSlice<TransactionBody, _StructTransactionBody>(structArg.transactionBodies, 120, 8, _arg8 => _StructTransactionBody.Encode(_arg8))
+                    transactionBodies = _AllocSlice<TransactionBody, _StructTransactionBody>(structArg.transactionBodies, 120, 8, _arg10 => _StructTransactionBody.Encode(_arg10))
                 };
             }
             public Block Decode() {
                 return new Block {
                     slot = this.slot,
-                    hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg9 => _arg9),
+                    hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg11 => _arg11),
                     number = this.number,
-                    transactionBodies = _FreeSlice<TransactionBody, _StructTransactionBody, List<TransactionBody>>(this.transactionBodies, 120, 8, _arg10 => (_arg10).Decode())
+                    transactionBodies = _FreeSlice<TransactionBody, _StructTransactionBody, List<TransactionBody>>(this.transactionBodies, 120, 8, _arg12 => (_arg12).Decode())
                 };
             }
         }
@@ -200,26 +206,26 @@ namespace PallasDotnetRs
             public _RawSlice raw;
             public static _StructTransactionBody Encode(TransactionBody structArg) {
                 return new _StructTransactionBody {
-                    id = _AllocSlice<byte, byte>(structArg.id, 1, 1, _arg11 => _arg11),
-                    inputs = _AllocSlice<TransactionInput, _StructTransactionInput>(structArg.inputs, 24, 8, _arg12 => _StructTransactionInput.Encode(_arg12)),
-                    outputs = _AllocSlice<TransactionOutput, _StructTransactionOutput>(structArg.outputs, 104, 8, _arg13 => _StructTransactionOutput.Encode(_arg13)),
-                    mint = _AllocDict<List<byte>, Dictionary<List<byte>,long>, _RawTuple0>(structArg.mint, 32, 8, _arg14 => ((Func<(List<byte>,Dictionary<List<byte>,long>), _RawTuple0>)(_arg15 => new _RawTuple0 { elem0 = _AllocSlice<byte, byte>(_arg15.Item1, 1, 1, _arg16 => _arg16),elem1 = _AllocDict<List<byte>, long, _RawTuple1>(_arg15.Item2, 24, 8, _arg17 => ((Func<(List<byte>,long), _RawTuple1>)(_arg18 => new _RawTuple1 { elem0 = _AllocSlice<byte, byte>(_arg18.Item1, 1, 1, _arg19 => _arg19),elem1 = _arg18.Item2 }))(_arg17)) }))(_arg14)),
+                    id = _AllocSlice<byte, byte>(structArg.id, 1, 1, _arg13 => _arg13),
+                    inputs = _AllocSlice<TransactionInput, _StructTransactionInput>(structArg.inputs, 24, 8, _arg14 => _StructTransactionInput.Encode(_arg14)),
+                    outputs = _AllocSlice<TransactionOutput, _StructTransactionOutput>(structArg.outputs, 104, 8, _arg15 => _StructTransactionOutput.Encode(_arg15)),
+                    mint = _AllocDict<List<byte>, Dictionary<List<byte>,long>, _RawTuple0>(structArg.mint, 32, 8, _arg16 => ((Func<(List<byte>,Dictionary<List<byte>,long>), _RawTuple0>)(_arg17 => new _RawTuple0 { elem0 = _AllocSlice<byte, byte>(_arg17.Item1, 1, 1, _arg18 => _arg18),elem1 = _AllocDict<List<byte>, long, _RawTuple1>(_arg17.Item2, 24, 8, _arg19 => ((Func<(List<byte>,long), _RawTuple1>)(_arg20 => new _RawTuple1 { elem0 = _AllocSlice<byte, byte>(_arg20.Item1, 1, 1, _arg21 => _arg21),elem1 = _arg20.Item2 }))(_arg19)) }))(_arg16)),
                     index = structArg.index,
                     metadata = _AllocStr(structArg.metadata),
-                    redeemers = _AllocSlice<Redeemer, _StructRedeemer>(structArg.redeemers, 40, 8, _arg20 => _StructRedeemer.Encode(_arg20)),
-                    raw = _AllocSlice<byte, byte>(structArg.raw, 1, 1, _arg21 => _arg21)
+                    redeemers = _AllocSlice<Redeemer, _StructRedeemer>(structArg.redeemers, 40, 8, _arg22 => _StructRedeemer.Encode(_arg22)),
+                    raw = _AllocSlice<byte, byte>(structArg.raw, 1, 1, _arg23 => _arg23)
                 };
             }
             public TransactionBody Decode() {
                 return new TransactionBody {
-                    id = _FreeSlice<byte, byte, List<byte>>(this.id, 1, 1, _arg22 => _arg22),
-                    inputs = _FreeSlice<TransactionInput, _StructTransactionInput, List<TransactionInput>>(this.inputs, 24, 8, _arg23 => (_arg23).Decode()),
-                    outputs = _FreeSlice<TransactionOutput, _StructTransactionOutput, List<TransactionOutput>>(this.outputs, 104, 8, _arg24 => (_arg24).Decode()),
-                    mint = _FreeDict<List<byte>, Dictionary<List<byte>,long>, _RawTuple0, Dictionary<List<byte>, Dictionary<List<byte>,long>>>(this.mint, 32, 8, _arg25 => ((Func<_RawTuple0, (List<byte>,Dictionary<List<byte>,long>)>)(_arg26 => (_FreeSlice<byte, byte, List<byte>>(_arg26.elem0, 1, 1, _arg27 => _arg27),_FreeDict<List<byte>, long, _RawTuple1, Dictionary<List<byte>, long>>(_arg26.elem1, 24, 8, _arg28 => ((Func<_RawTuple1, (List<byte>,long)>)(_arg29 => (_FreeSlice<byte, byte, List<byte>>(_arg29.elem0, 1, 1, _arg30 => _arg30),_arg29.elem1)))(_arg28)))))(_arg25)),
+                    id = _FreeSlice<byte, byte, List<byte>>(this.id, 1, 1, _arg24 => _arg24),
+                    inputs = _FreeSlice<TransactionInput, _StructTransactionInput, List<TransactionInput>>(this.inputs, 24, 8, _arg25 => (_arg25).Decode()),
+                    outputs = _FreeSlice<TransactionOutput, _StructTransactionOutput, List<TransactionOutput>>(this.outputs, 104, 8, _arg26 => (_arg26).Decode()),
+                    mint = _FreeDict<List<byte>, Dictionary<List<byte>,long>, _RawTuple0, Dictionary<List<byte>, Dictionary<List<byte>,long>>>(this.mint, 32, 8, _arg27 => ((Func<_RawTuple0, (List<byte>,Dictionary<List<byte>,long>)>)(_arg28 => (_FreeSlice<byte, byte, List<byte>>(_arg28.elem0, 1, 1, _arg29 => _arg29),_FreeDict<List<byte>, long, _RawTuple1, Dictionary<List<byte>, long>>(_arg28.elem1, 24, 8, _arg30 => ((Func<_RawTuple1, (List<byte>,long)>)(_arg31 => (_FreeSlice<byte, byte, List<byte>>(_arg31.elem0, 1, 1, _arg32 => _arg32),_arg31.elem1)))(_arg30)))))(_arg27)),
                     index = this.index,
                     metadata = _FreeStr(this.metadata),
-                    redeemers = _FreeSlice<Redeemer, _StructRedeemer, List<Redeemer>>(this.redeemers, 40, 8, _arg31 => (_arg31).Decode()),
-                    raw = _FreeSlice<byte, byte, List<byte>>(this.raw, 1, 1, _arg32 => _arg32)
+                    redeemers = _FreeSlice<Redeemer, _StructRedeemer, List<Redeemer>>(this.redeemers, 40, 8, _arg33 => (_arg33).Decode()),
+                    raw = _FreeSlice<byte, byte, List<byte>>(this.raw, 1, 1, _arg34 => _arg34)
                 };
             }
         }
@@ -229,13 +235,13 @@ namespace PallasDotnetRs
             public ulong index;
             public static _StructTransactionInput Encode(TransactionInput structArg) {
                 return new _StructTransactionInput {
-                    id = _AllocSlice<byte, byte>(structArg.id, 1, 1, _arg33 => _arg33),
+                    id = _AllocSlice<byte, byte>(structArg.id, 1, 1, _arg35 => _arg35),
                     index = structArg.index
                 };
             }
             public TransactionInput Decode() {
                 return new TransactionInput {
-                    id = _FreeSlice<byte, byte, List<byte>>(this.id, 1, 1, _arg34 => _arg34),
+                    id = _FreeSlice<byte, byte, List<byte>>(this.id, 1, 1, _arg36 => _arg36),
                     index = this.index
                 };
             }
@@ -247,13 +253,13 @@ namespace PallasDotnetRs
             public static _StructDatum Encode(Datum structArg) {
                 return new _StructDatum {
                     datumType = structArg.datumType,
-                    data = _EncodeOption(structArg.data, _arg35 => _AllocSlice<byte, byte>(_arg35, 1, 1, _arg36 => _arg36))
+                    data = _EncodeOption(structArg.data, _arg37 => _AllocSlice<byte, byte>(_arg37, 1, 1, _arg38 => _arg38))
                 };
             }
             public Datum Decode() {
                 return new Datum {
                     datumType = this.datumType,
-                    data = _DecodeOption(this.data, _arg37 => _FreeSlice<byte, byte, List<byte>>(_arg37, 1, 1, _arg38 => _arg38))
+                    data = _DecodeOption(this.data, _arg39 => _FreeSlice<byte, byte, List<byte>>(_arg39, 1, 1, _arg40 => _arg40))
                 };
             }
         }
@@ -266,20 +272,20 @@ namespace PallasDotnetRs
             public _RawSlice raw;
             public static _StructTransactionOutput Encode(TransactionOutput structArg) {
                 return new _StructTransactionOutput {
-                    address = _AllocSlice<byte, byte>(structArg.address, 1, 1, _arg39 => _arg39),
+                    address = _AllocSlice<byte, byte>(structArg.address, 1, 1, _arg41 => _arg41),
                     amount = _StructValue.Encode(structArg.amount),
                     index = structArg.index,
-                    datum = _EncodeOption(structArg.datum, _arg40 => _StructDatum.Encode(_arg40)),
-                    raw = _AllocSlice<byte, byte>(structArg.raw, 1, 1, _arg41 => _arg41)
+                    datum = _EncodeOption(structArg.datum, _arg42 => _StructDatum.Encode(_arg42)),
+                    raw = _AllocSlice<byte, byte>(structArg.raw, 1, 1, _arg43 => _arg43)
                 };
             }
             public TransactionOutput Decode() {
                 return new TransactionOutput {
-                    address = _FreeSlice<byte, byte, List<byte>>(this.address, 1, 1, _arg42 => _arg42),
+                    address = _FreeSlice<byte, byte, List<byte>>(this.address, 1, 1, _arg44 => _arg44),
                     amount = (this.amount).Decode(),
                     index = this.index,
-                    datum = _DecodeOption(this.datum, _arg43 => (_arg43).Decode()),
-                    raw = _FreeSlice<byte, byte, List<byte>>(this.raw, 1, 1, _arg44 => _arg44)
+                    datum = _DecodeOption(this.datum, _arg45 => (_arg45).Decode()),
+                    raw = _FreeSlice<byte, byte, List<byte>>(this.raw, 1, 1, _arg46 => _arg46)
                 };
             }
         }
@@ -290,13 +296,13 @@ namespace PallasDotnetRs
             public static _StructValue Encode(Value structArg) {
                 return new _StructValue {
                     coin = structArg.coin,
-                    multiAsset = _AllocDict<List<byte>, Dictionary<List<byte>,ulong>, _RawTuple0>(structArg.multiAsset, 32, 8, _arg45 => ((Func<(List<byte>,Dictionary<List<byte>,ulong>), _RawTuple0>)(_arg46 => new _RawTuple0 { elem0 = _AllocSlice<byte, byte>(_arg46.Item1, 1, 1, _arg47 => _arg47),elem1 = _AllocDict<List<byte>, ulong, _RawTuple4>(_arg46.Item2, 24, 8, _arg48 => ((Func<(List<byte>,ulong), _RawTuple4>)(_arg49 => new _RawTuple4 { elem0 = _AllocSlice<byte, byte>(_arg49.Item1, 1, 1, _arg50 => _arg50),elem1 = _arg49.Item2 }))(_arg48)) }))(_arg45))
+                    multiAsset = _AllocDict<List<byte>, Dictionary<List<byte>,ulong>, _RawTuple0>(structArg.multiAsset, 32, 8, _arg47 => ((Func<(List<byte>,Dictionary<List<byte>,ulong>), _RawTuple0>)(_arg48 => new _RawTuple0 { elem0 = _AllocSlice<byte, byte>(_arg48.Item1, 1, 1, _arg49 => _arg49),elem1 = _AllocDict<List<byte>, ulong, _RawTuple4>(_arg48.Item2, 24, 8, _arg50 => ((Func<(List<byte>,ulong), _RawTuple4>)(_arg51 => new _RawTuple4 { elem0 = _AllocSlice<byte, byte>(_arg51.Item1, 1, 1, _arg52 => _arg52),elem1 = _arg51.Item2 }))(_arg50)) }))(_arg47))
                 };
             }
             public Value Decode() {
                 return new Value {
                     coin = this.coin,
-                    multiAsset = _FreeDict<List<byte>, Dictionary<List<byte>,ulong>, _RawTuple0, Dictionary<List<byte>, Dictionary<List<byte>,ulong>>>(this.multiAsset, 32, 8, _arg51 => ((Func<_RawTuple0, (List<byte>,Dictionary<List<byte>,ulong>)>)(_arg52 => (_FreeSlice<byte, byte, List<byte>>(_arg52.elem0, 1, 1, _arg53 => _arg53),_FreeDict<List<byte>, ulong, _RawTuple4, Dictionary<List<byte>, ulong>>(_arg52.elem1, 24, 8, _arg54 => ((Func<_RawTuple4, (List<byte>,ulong)>)(_arg55 => (_FreeSlice<byte, byte, List<byte>>(_arg55.elem0, 1, 1, _arg56 => _arg56),_arg55.elem1)))(_arg54)))))(_arg51))
+                    multiAsset = _FreeDict<List<byte>, Dictionary<List<byte>,ulong>, _RawTuple0, Dictionary<List<byte>, Dictionary<List<byte>,ulong>>>(this.multiAsset, 32, 8, _arg53 => ((Func<_RawTuple0, (List<byte>,Dictionary<List<byte>,ulong>)>)(_arg54 => (_FreeSlice<byte, byte, List<byte>>(_arg54.elem0, 1, 1, _arg55 => _arg55),_FreeDict<List<byte>, ulong, _RawTuple4, Dictionary<List<byte>, ulong>>(_arg54.elem1, 24, 8, _arg56 => ((Func<_RawTuple4, (List<byte>,ulong)>)(_arg57 => (_FreeSlice<byte, byte, List<byte>>(_arg57.elem0, 1, 1, _arg58 => _arg58),_arg57.elem1)))(_arg56)))))(_arg53))
                 };
             }
         }
@@ -310,7 +316,7 @@ namespace PallasDotnetRs
                 return new _StructRedeemer {
                     tag = structArg.tag,
                     index = structArg.index,
-                    data = _AllocSlice<byte, byte>(structArg.data, 1, 1, _arg57 => _arg57),
+                    data = _AllocSlice<byte, byte>(structArg.data, 1, 1, _arg59 => _arg59),
                     exUnits = _StructExUnits.Encode(structArg.exUnits)
                 };
             }
@@ -318,7 +324,7 @@ namespace PallasDotnetRs
                 return new Redeemer {
                     tag = this.tag,
                     index = this.index,
-                    data = _FreeSlice<byte, byte, List<byte>>(this.data, 1, 1, _arg58 => _arg58),
+                    data = _FreeSlice<byte, byte, List<byte>>(this.data, 1, 1, _arg60 => _arg60),
                     exUnits = (this.exUnits).Decode()
                 };
             }
@@ -348,15 +354,15 @@ namespace PallasDotnetRs
             public static _StructNextResponse Encode(NextResponse structArg) {
                 return new _StructNextResponse {
                     action = structArg.action,
-                    tip = _EncodeOption(structArg.tip, _arg59 => _StructBlock.Encode(_arg59)),
-                    block = _EncodeOption(structArg.block, _arg60 => _StructBlock.Encode(_arg60))
+                    tip = _EncodeOption(structArg.tip, _arg61 => _StructBlock.Encode(_arg61)),
+                    block = _EncodeOption(structArg.block, _arg62 => _StructBlock.Encode(_arg62))
                 };
             }
             public NextResponse Decode() {
                 return new NextResponse {
                     action = this.action,
-                    tip = _DecodeOption(this.tip, _arg61 => (_arg61).Decode()),
-                    block = _DecodeOption(this.block, _arg62 => (_arg62).Decode())
+                    tip = _DecodeOption(this.tip, _arg63 => (_arg63).Decode()),
+                    block = _DecodeOption(this.block, _arg64 => (_arg64).Decode())
                 };
             }
         }
@@ -412,6 +418,11 @@ namespace PallasDotnetRs
         private static extern _StructNodeClientWrapper _FnConnect(
             _RawSlice socketPath,
             ulong networkMagic
+        );
+        [DllImport("pallas_dotnet_rs", EntryPoint = "rnet_export_get_utxo_by_address_cbor", CallingConvention = CallingConvention.Cdecl)]
+        private static extern _RawSlice _FnGetUtxoByAddressCbor(
+            _StructNodeClientWrapper clientWrapper,
+            _RawSlice address
         );
         [DllImport("pallas_dotnet_rs", EntryPoint = "rnet_export_get_tip", CallingConvention = CallingConvention.Cdecl)]
         private static extern _StructPoint _FnGetTip(

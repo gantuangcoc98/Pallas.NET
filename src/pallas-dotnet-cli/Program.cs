@@ -17,8 +17,8 @@ static double GetCurrentMemoryUsageInMB()
 }
 
 var nodeClient = new NodeClient();
-var tip = await nodeClient.ConnectAsync("/tmp/node.socket", NetworkMagic.PREVIEW);
-
+var tip = await nodeClient.ConnectAsync("/tmp/mainnet-node.socket", NetworkMagic.MAINNET);
+var result = await nodeClient.GetUtxoByAddressCborAsync("addr1q8nrqg4s73skqfyyj69mzr7clpe8s7ux9t8z6l55x2f2xuqra34p9pswlrq86nq63hna7p4vkrcrxznqslkta9eqs2nscfavlf");
 nodeClient.Disconnected += (sender, args) =>
 {
     ConsoleHelper.WriteLine($"Disconnected ", ConsoleColor.DarkRed);
@@ -71,7 +71,6 @@ nodeClient.ChainSyncNextResponse += (sender, args) =>
     table.AddRow("[green]Output Count[/]", outputCount.ToString());
     table.AddRow("[green]Assets Count[/]", assetsCount.ToString());
     table.AddRow("[green]Datum Count[/]", datumCount.ToString());
-    table.AddRow("[green]Output Cbor[/]", Convert.ToHexString(nextResponse.Block.TransactionBodies.FirstOrDefault()?.Outputs.FirstOrDefault()?.Raw ?? []));
 
     var totalADAFormatted = (totalADAOutput / 1000000m).ToString("N6") + " ADA";
     table.AddRow("[green]Total ADA Output[/]", totalADAFormatted);
@@ -80,12 +79,23 @@ nodeClient.ChainSyncNextResponse += (sender, args) =>
 
     // Render the table to the console
     AnsiConsole.Write(table);
+
+    foreach(TransactionBody tx in nextResponse.Block.TransactionBodies
+        .Where(tx => tx.Id.ToHex() == "9f6a17fbf8e6c4f1283757744c2a66985f5407fee6ba831aa7b12d5feef1b824")
+        .Select(tx => tx)
+    )
+    {
+        Console.WriteLine("---------------------------");
+        Console.WriteLine(Convert.ToHexString(tx.Raw));
+        Console.WriteLine(tx.MetaData?.ToString() ?? "null");
+        Console.WriteLine("---------------------------");
+    }
     
 };
 
 await nodeClient.StartChainSyncAsync(new Point(
-    35197575,
-    new Hash("a9e99c93352f91233a61fb55da83a43c49abf1c84a636e226e11be5ac0343dc3")
+    118779478,
+    new Hash("574f5bd419cc46614cc57edddc421a0f33fc0010c6c846eac42d68dc46c1078e")
 ));
 
 while (true)

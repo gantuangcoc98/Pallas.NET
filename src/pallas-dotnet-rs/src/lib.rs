@@ -1,21 +1,29 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash, ops::Deref};
 
 use lazy_static::lazy_static;
 use pallas::{
-    codec::{minicbor::{self, Encode}, utils::KeepRaw}, ledger::{
+    codec::{
+        minicbor::{self, Encode},
+        utils::{Bytes, KeepRaw, TagWrap},
+    },
+    ledger::{
         addresses::{Address, ByronAddress},
-        primitives::{alonzo, conway::{PlutusData, PseudoDatumOption}},
+        primitives::{
+            alonzo,
+            conway::{PlutusData, PseudoDatumOption},
+        },
         traverse::{Era, MultiEraBlock, MultiEraMeta, MultiEraTx},
-    }, network::{
+    },
+    network::{
         facades::{NodeClient, PeerClient},
         miniprotocols::{
             chainsync,
-            localstate::queries_v16,
+            localstate::queries_v16::{self, Addr},
             txsubmission::{self, EraTxBody, TxIdAndSize},
             Point as PallasPoint, MAINNET_MAGIC, PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC,
             TESTNET_MAGIC,
         },
-    }
+    },
 };
 use rnet::{net, Net};
 use tokio::runtime::Runtime;
@@ -80,7 +88,7 @@ pub struct TransactionBody {
     raw: Vec<u8>,
 }
 
-#[derive(Net)]
+#[derive(Net, Debug, Eq, PartialEq, Hash)]
 pub struct TransactionInput {
     id: Vec<u8>,
     index: u64,
@@ -126,6 +134,7 @@ pub type MintCoin = i64;
 pub type PolicyId = Vec<u8>;
 pub type AssetName = Vec<u8>;
 pub type RedeemerTag = u8;
+pub type UtxoByAddress = HashMap<TransactionInput, TransactionOutput>;
 
 #[derive(Net)]
 pub struct NextResponse {
@@ -167,6 +176,42 @@ impl NodeClientWrapper {
         let client_data_ptr = Box::into_raw(Box::new(client_wrapper_data)) as usize;
 
         NodeClientWrapper { client_data_ptr }
+    }
+
+    #[net]
+    pub fn get_utxo_by_address_cbor(
+        client_wrapper: NodeClientWrapper,
+        address: String,
+    ) -> Vec<Vec<u8>> {
+        unsafe {
+            let client_data_ptr = client_wrapper.client_data_ptr as *mut NodeClientWrapperData;
+            let client_data = Box::from_raw(client_data_ptr);
+
+            let client_ptr = client_data.client_ptr as *mut NodeClient;
+
+            // Convert the raw pointer back to a Box to deallocate the memory
+            let mut client = Box::from_raw(client_ptr);
+
+            // Query Utxo by address cbor
+            let utxos_by_address_cbor = RT.block_on(async {
+                let client = client.statequery();
+                let era = queries_v16::get_current_era(client).await.unwrap();
+                let addrz: Address = Address::from_bech32(&address).unwrap();
+                let addrz: Addr = addrz.to_vec().into();
+                let query = queries_v16::BlockQuery::GetUTxOByAddress(vec![addrz]);
+
+                queries_v16::get_cbor(client, era, query).await.unwrap()
+            });
+
+            // Convert client back to a raw pointer for future use
+            let _ = Box::into_raw(client);
+            let _ = Box::into_raw(client_data);
+
+            utxos_by_address_cbor
+                .into_iter()
+                .map(|tag_wrap_instance| tag_wrap_instance.0.deref().clone())
+                .collect()
+        }
     }
 
     #[net]
@@ -296,29 +341,45 @@ impl NodeClientWrapper {
                                         id: tx_body.hash().to_vec(),
                                         index,
                                         raw: tx_body.encode(),
-                                        mint: tx_body.mints().iter().map(|mint_ma| {
-                                            (
-                                                mint_ma.policy().to_vec(),
-                                                mint_ma.assets()
-                                                    .iter()
-                                                    .map(|a| (a.name().to_vec(), a.mint_coin().unwrap()))
-                                                    .collect(),
-                                            )
-                                        }).collect(),
+                                        mint: tx_body
+                                            .mints()
+                                            .iter()
+                                            .map(|mint_ma| {
+                                                (
+                                                    mint_ma.policy().to_vec(),
+                                                    mint_ma
+                                                        .assets()
+                                                        .iter()
+                                                        .map(|a| {
+                                                            (
+                                                                a.name().to_vec(),
+                                                                a.mint_coin().unwrap(),
+                                                            )
+                                                        })
+                                                        .collect(),
+                                                )
+                                            })
+                                            .collect(),
                                         // metadata: serde_json::to_string(tx_body.metadata().as_alonzo().unwrap()).unwrap(),
                                         metadata: match tx_body.metadata() {
-                                            MultiEraMeta::AlonzoCompatible(x) => serde_json::to_string(x).unwrap(),
+                                            MultiEraMeta::AlonzoCompatible(x) => {
+                                                serde_json::to_string(x).unwrap()
+                                            }
                                             _ => "".to_string(),
                                         },
-                                        redeemers: tx_body.redeemers().iter().map(|redeemer| Redeemer {
-                                            tag: redeemer_tag_to_u8(&redeemer.tag),
-                                            index: redeemer.index,
-                                            data: plutus_data_to_keep_raw(&redeemer.data),
-                                            ex_units: ExUnits {
-                                                mem: redeemer.ex_units.mem,
-                                                steps: redeemer.ex_units.steps,
-                                            },
-                                        }).collect(),
+                                        redeemers: tx_body
+                                            .redeemers()
+                                            .iter()
+                                            .map(|redeemer| Redeemer {
+                                                tag: redeemer_tag_to_u8(&redeemer.tag),
+                                                index: redeemer.index,
+                                                data: plutus_data_to_keep_raw(&redeemer.data),
+                                                ex_units: ExUnits {
+                                                    mem: redeemer.ex_units.mem,
+                                                    steps: redeemer.ex_units.steps,
+                                                },
+                                            })
+                                            .collect(),
                                         inputs: tx_body
                                             .inputs()
                                             .into_iter()
@@ -477,6 +538,20 @@ fn era_to_u16(era: Era) -> u16 {
         _ => 7, // Assume a future era
     }
 }
+
+fn u16_to_era(era: u16) -> Era {
+    match era {
+        0 => Era::Byron,
+        1 => Era::Shelley,
+        2 => Era::Allegra,
+        3 => Era::Mary,
+        4 => Era::Alonzo,
+        5 => Era::Babbage,
+        6 => Era::Conway,
+        _ => Era::Mary, // Assume a future era
+    }
+}
+
 fn redeemer_tag_to_u8(tag: &alonzo::RedeemerTag) -> u8 {
     match tag {
         alonzo::RedeemerTag::Spend => 0,
@@ -505,7 +580,7 @@ fn convert_to_datum(datum: PseudoDatumOption<KeepRaw<'_, PlutusData>>) -> Datum 
 fn plutus_data_to_keep_raw(plutus_data: &PlutusData) -> Vec<u8> {
     let mut buffer = Vec::new(); // A buffer to hold the encoded data
     let mut encoder = minicbor::Encoder::new(&mut buffer);
-    plutus_data.encode(&mut encoder,  &mut ());
+    plutus_data.encode(&mut encoder, &mut ()).ok();
     buffer
 }
 
@@ -543,7 +618,7 @@ impl TxSubmit {
             let client_txsub = peer.txsubmission();
 
             client_txsub.send_init().await.unwrap();
-            
+
             let _ = match client_txsub.next_request().await.unwrap() {
                 txsubmission::Request::TxIds(ack, _) => {
                     assert_eq!(*client_txsub.state(), txsubmission::State::TxIdsBlocking);
@@ -558,42 +633,47 @@ impl TxSubmit {
 
             let to_send = mempool.clone();
             let ids_and_size = to_send
-            .clone()
-            .into_iter()
-            .map(|(h, b)| TxIdAndSize(txsubmission::EraTxId(tx_era, h.to_vec()), b.len() as u32))
-            .collect();
+                .clone()
+                .into_iter()
+                .map(|(h, b)| {
+                    TxIdAndSize(txsubmission::EraTxId(tx_era, h.to_vec()), b.len() as u32)
+                })
+                .collect();
 
             client_txsub.reply_tx_ids(ids_and_size).await.unwrap();
-            
+
             let ids = match client_txsub.next_request().await.unwrap() {
                 txsubmission::Request::Txs(ids) => ids,
                 _ => panic!("unexpected message"),
             };
 
-            let txs_to_send: Vec<_> = to_send.into_iter().map(|(_, b)| EraTxBody(tx_era, b)).collect();
+            let txs_to_send: Vec<_> = to_send
+                .into_iter()
+                .map(|(_, b)| EraTxBody(tx_era, b))
+                .collect();
             client_txsub.reply_txs(txs_to_send).await.unwrap();
-            
+
             match client_txsub.next_request().await.unwrap() {
                 txsubmission::Request::TxIdsNonBlocking(_, _) => {
                     assert_eq!(*client_txsub.state(), txsubmission::State::TxIdsNonBlocking);
                 }
                 _ => panic!("unexpected message"),
             };
-        
+
             client_txsub.reply_tx_ids(vec![]).await.unwrap();
-        
+
             match client_txsub.next_request().await.unwrap() {
                 txsubmission::Request::TxIds(ack, _) => {
                     assert_eq!(*client_txsub.state(), txsubmission::State::TxIdsBlocking);
-        
+
                     client_txsub.send_done().await.unwrap();
                     assert_eq!(*client_txsub.state(), txsubmission::State::Done);
-        
+
                     ack
                 }
                 txsubmission::Request::TxIdsNonBlocking(ack, _) => {
                     assert_eq!(*client_txsub.state(), txsubmission::State::TxIdsNonBlocking);
-        
+
                     ack
                 }
                 _ => panic!("unexpected message"),
