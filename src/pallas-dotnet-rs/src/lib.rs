@@ -195,9 +195,9 @@ impl NodeClientWrapper {
             let utxos_by_address_cbor = RT.block_on(async {
                 let client = client.statequery();
 
-                let _ = client.send_reacquire(None).await;
+                client.send_reacquire(None).await.unwrap();
                 client.recv_while_acquiring().await.unwrap();
-                
+
                 let era = queries_v16::get_current_era(client).await.unwrap();
                 let addrz: Address = Address::from_bech32(&address).unwrap();
                 let addrz: Addr = addrz.to_vec().into();
