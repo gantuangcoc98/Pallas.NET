@@ -17,8 +17,8 @@ static double GetCurrentMemoryUsageInMB()
 }
 
 var nodeClient = new NodeClient();
-var tip = await nodeClient.ConnectAsync("/tmp/mainnet-node.socket", NetworkMagic.MAINNET);
-var result = await nodeClient.GetUtxoByAddressCborAsync("addr1q8nrqg4s73skqfyyj69mzr7clpe8s7ux9t8z6l55x2f2xuqra34p9pswlrq86nq63hna7p4vkrcrxznqslkta9eqs2nscfavlf");
+var tip = await nodeClient.ConnectAsync("/tmp/node.socket", NetworkMagic.PREVIEW);
+var result = await nodeClient.GetUtxoByAddressCborAsync("addr_test1qr302ykx22zmhecwpml2mnjyysfghdl4m55ekj95a2jhwguaxpxg84qj6xxsv5kag39zm2q5pwp3uf6nx6fjhjrlsd7s7v0v26");
 nodeClient.Disconnected += (sender, args) =>
 {
     ConsoleHelper.WriteLine($"Disconnected ", ConsoleColor.DarkRed);

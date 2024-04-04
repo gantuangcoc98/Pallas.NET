@@ -189,17 +189,19 @@ impl NodeClientWrapper {
 
             let client_ptr = client_data.client_ptr as *mut NodeClient;
 
-            // Convert the raw pointer back to a Box to deallocate the memory
             let mut client = Box::from_raw(client_ptr);
 
             // Query Utxo by address cbor
             let utxos_by_address_cbor = RT.block_on(async {
                 let client = client.statequery();
+
+                let _ = client.send_reacquire(None).await;
+                client.recv_while_acquiring().await.unwrap();
+                
                 let era = queries_v16::get_current_era(client).await.unwrap();
                 let addrz: Address = Address::from_bech32(&address).unwrap();
                 let addrz: Addr = addrz.to_vec().into();
                 let query = queries_v16::BlockQuery::GetUTxOByAddress(vec![addrz]);
-
                 queries_v16::get_cbor(client, era, query).await.unwrap()
             });
 
