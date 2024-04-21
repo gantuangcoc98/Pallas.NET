@@ -79,6 +79,7 @@ pub struct Block {
 #[derive(Net)]
 pub struct TransactionBody {
     id: Vec<u8>,
+    era: u16,
     inputs: Vec<TransactionInput>,
     outputs: Vec<TransactionOutput>,
     mint: HashMap<PolicyId, HashMap<AssetName, MintCoin>>,
@@ -342,6 +343,7 @@ impl NodeClientWrapper {
                                     .map(|(index, tx_body)| TransactionBody {
                                         id: tx_body.hash().to_vec(),
                                         index,
+                                        era: era_to_u16(tx_body.era()),
                                         raw: tx_body.encode(),
                                         mint: tx_body
                                             .mints()

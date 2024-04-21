@@ -28,6 +28,7 @@ namespace PallasDotnetRs
         }
         public struct TransactionBody {
             public List<byte> id;
+            public ushort era;
             public List<TransactionInput> inputs;
             public List<TransactionOutput> outputs;
             public Dictionary<List<byte>,Dictionary<List<byte>,long>> mint;
@@ -182,7 +183,7 @@ namespace PallasDotnetRs
                     slot = structArg.slot,
                     hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg9 => _arg9),
                     number = structArg.number,
-                    transactionBodies = _AllocSlice<TransactionBody, _StructTransactionBody>(structArg.transactionBodies, 120, 8, _arg10 => _StructTransactionBody.Encode(_arg10))
+                    transactionBodies = _AllocSlice<TransactionBody, _StructTransactionBody>(structArg.transactionBodies, 128, 8, _arg10 => _StructTransactionBody.Encode(_arg10))
                 };
             }
             public Block Decode() {
@@ -190,13 +191,14 @@ namespace PallasDotnetRs
                     slot = this.slot,
                     hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg11 => _arg11),
                     number = this.number,
-                    transactionBodies = _FreeSlice<TransactionBody, _StructTransactionBody, List<TransactionBody>>(this.transactionBodies, 120, 8, _arg12 => (_arg12).Decode())
+                    transactionBodies = _FreeSlice<TransactionBody, _StructTransactionBody, List<TransactionBody>>(this.transactionBodies, 128, 8, _arg12 => (_arg12).Decode())
                 };
             }
         }
         [StructLayout(LayoutKind.Sequential)]
         private struct _StructTransactionBody {
             public _RawSlice id;
+            public ushort era;
             public _RawSlice inputs;
             public _RawSlice outputs;
             public _RawSlice mint;
@@ -207,6 +209,7 @@ namespace PallasDotnetRs
             public static _StructTransactionBody Encode(TransactionBody structArg) {
                 return new _StructTransactionBody {
                     id = _AllocSlice<byte, byte>(structArg.id, 1, 1, _arg13 => _arg13),
+                    era = structArg.era,
                     inputs = _AllocSlice<TransactionInput, _StructTransactionInput>(structArg.inputs, 24, 8, _arg14 => _StructTransactionInput.Encode(_arg14)),
                     outputs = _AllocSlice<TransactionOutput, _StructTransactionOutput>(structArg.outputs, 104, 8, _arg15 => _StructTransactionOutput.Encode(_arg15)),
                     mint = _AllocDict<List<byte>, Dictionary<List<byte>,long>, _RawTuple0>(structArg.mint, 32, 8, _arg16 => ((Func<(List<byte>,Dictionary<List<byte>,long>), _RawTuple0>)(_arg17 => new _RawTuple0 { elem0 = _AllocSlice<byte, byte>(_arg17.Item1, 1, 1, _arg18 => _arg18),elem1 = _AllocDict<List<byte>, long, _RawTuple1>(_arg17.Item2, 24, 8, _arg19 => ((Func<(List<byte>,long), _RawTuple1>)(_arg20 => new _RawTuple1 { elem0 = _AllocSlice<byte, byte>(_arg20.Item1, 1, 1, _arg21 => _arg21),elem1 = _arg20.Item2 }))(_arg19)) }))(_arg16)),
@@ -219,6 +222,7 @@ namespace PallasDotnetRs
             public TransactionBody Decode() {
                 return new TransactionBody {
                     id = _FreeSlice<byte, byte, List<byte>>(this.id, 1, 1, _arg24 => _arg24),
+                    era = this.era,
                     inputs = _FreeSlice<TransactionInput, _StructTransactionInput, List<TransactionInput>>(this.inputs, 24, 8, _arg25 => (_arg25).Decode()),
                     outputs = _FreeSlice<TransactionOutput, _StructTransactionOutput, List<TransactionOutput>>(this.outputs, 104, 8, _arg26 => (_arg26).Decode()),
                     mint = _FreeDict<List<byte>, Dictionary<List<byte>,long>, _RawTuple0, Dictionary<List<byte>, Dictionary<List<byte>,long>>>(this.mint, 32, 8, _arg27 => ((Func<_RawTuple0, (List<byte>,Dictionary<List<byte>,long>)>)(_arg28 => (_FreeSlice<byte, byte, List<byte>>(_arg28.elem0, 1, 1, _arg29 => _arg29),_FreeDict<List<byte>, long, _RawTuple1, Dictionary<List<byte>, long>>(_arg28.elem1, 24, 8, _arg30 => ((Func<_RawTuple1, (List<byte>,long)>)(_arg31 => (_FreeSlice<byte, byte, List<byte>>(_arg31.elem0, 1, 1, _arg32 => _arg32),_arg31.elem1)))(_arg30)))))(_arg27)),
