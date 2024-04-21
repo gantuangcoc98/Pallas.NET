@@ -28,6 +28,7 @@ public class Utils
         => new(
             new Hash([.. rsTransactionBody.id]),
             rsTransactionBody.index,
+            rsTransactionBody.era,
             rsTransactionBody.inputs.Select(MapPallasTransactionInput),
             rsTransactionBody.outputs.Select(MapPallasTransactionOutput),
             MapPallasMultiAsset(rsTransactionBody.mint),
