@@ -9,10 +9,10 @@ use pallas::{
     ledger::{
         addresses::{Address, ByronAddress},
         primitives::{
-            alonzo,
+            alonzo, babbage,
             conway::{self, PlutusData, PseudoDatumOption},
         },
-        traverse::{Era, MultiEraBlock, MultiEraMeta, MultiEraTx},
+        traverse::{Era, MultiEraBlock, MultiEraMeta, MultiEraOutput, MultiEraTx},
     },
     network::{
         facades::{NodeClient, PeerClient},
@@ -398,7 +398,7 @@ impl NodeClientWrapper {
                                             .enumerate()
                                             .map(|(index, tx_output)| TransactionOutput {
                                                 index,
-                                                address: tx_output.address().unwrap().to_vec(),
+                                                address: output_address_bytes(&tx_output),
                                                 datum: tx_output.datum().map(convert_to_datum),
                                                 raw: tx_output.encode(),
                                                 amount: Value {
@@ -588,6 +588,22 @@ fn plutus_data_to_keep_raw(plutus_data: &PlutusData) -> Vec<u8> {
     let mut encoder = minicbor::Encoder::new(&mut buffer);
     plutus_data.encode(&mut encoder, &mut ()).ok();
     buffer
+}
+
+fn output_address_bytes(multi_era_output: &MultiEraOutput) -> Vec<u8> {
+    match multi_era_output {
+        MultiEraOutput::AlonzoCompatible(x) => x.address.to_vec(),
+        MultiEraOutput::Babbage(x) => match x.deref().deref() {
+            babbage::MintedTransactionOutput::Legacy(x) => x.address.to_vec(),
+            babbage::MintedTransactionOutput::PostAlonzo(x) => x.address.to_vec(),
+        },
+        MultiEraOutput::Byron(x) => x.address.payload.0.to_vec(),
+        MultiEraOutput::Conway(x) => match x.deref().deref() {
+            conway::MintedTransactionOutput::Legacy(x) => x.address.to_vec(),
+            conway::MintedTransactionOutput::PostAlonzo(x) => x.address.to_vec(),
+        },
+        _ => panic!("unexpected multi era output..."),
+    }
 }
 
 #[derive(Net)]
