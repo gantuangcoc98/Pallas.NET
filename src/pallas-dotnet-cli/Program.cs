@@ -18,7 +18,6 @@ static double GetCurrentMemoryUsageInMB()
 
 var nodeClient = new NodeClient();
 var tip = await nodeClient.ConnectAsync("/tmp/node.socket", NetworkMagic.PREVIEW);
-var result = await nodeClient.GetUtxoByAddressCborAsync("addr_test1qr302ykx22zmhecwpml2mnjyysfghdl4m55ekj95a2jhwguaxpxg84qj6xxsv5kag39zm2q5pwp3uf6nx6fjhjrlsd7s7v0v26");
 nodeClient.Disconnected += (sender, args) =>
 {
     ConsoleHelper.WriteLine($"Disconnected ", ConsoleColor.DarkRed);
@@ -75,27 +74,25 @@ nodeClient.ChainSyncNextResponse += (sender, args) =>
     var totalADAFormatted = (totalADAOutput / 1000000m).ToString("N6") + " ADA";
     table.AddRow("[green]Total ADA Output[/]", totalADAFormatted);
     table.AddRow("[yellow]Memory[/]", GetCurrentMemoryUsageInMB().ToString("N2") + " MB");
-    table.AddRow("[yellow]Time[/]",  DateTime.Now.ToString("HH:mm:ss.fff"));
+    table.AddRow("[yellow]Time[/]", DateTime.Now.ToString("HH:mm:ss.fff"));
 
     // Render the table to the console
     AnsiConsole.Write(table);
 
-    foreach(TransactionBody tx in nextResponse.Block.TransactionBodies
-        .Where(tx => tx.Id.ToHex() == "9f6a17fbf8e6c4f1283757744c2a66985f5407fee6ba831aa7b12d5feef1b824")
-        .Select(tx => tx)
-    )
-    {
-        Console.WriteLine("---------------------------");
-        Console.WriteLine(Convert.ToHexString(tx.Raw));
-        Console.WriteLine(tx.MetaData?.ToString() ?? "null");
-        Console.WriteLine("---------------------------");
-    }
-    
+    nextResponse.Block.TransactionBodies
+        .Where(tx => tx.Id.ToHex() == "4c4afd467a06e93891221141305c9242ed633e0788c9d8eb10fd66a3117e77b6").ToList()
+        .SelectMany(tx => tx.Inputs).ToList()
+        .ForEach(input => {
+            Console.WriteLine("---------------------------");
+            Console.WriteLine(Convert.ToHexString(input.Id.Bytes));
+            Console.WriteLine("---------------------------");
+        });
+
 };
 
 await nodeClient.StartChainSyncAsync(new Point(
-    118779478,
-    new Hash("574f5bd419cc46614cc57edddc421a0f33fc0010c6c846eac42d68dc46c1078e")
+    50778140,
+    new Hash("7ee32fbe980ea3e93c1a0d3aaa66f8960f8d24b4c1c9d1da0c645623ed791e53")
 ));
 
 while (true)

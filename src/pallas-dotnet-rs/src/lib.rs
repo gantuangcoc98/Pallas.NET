@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash, ops::Deref};
+use std::{collections::{HashMap, HashSet}, hash::Hash, ops::Deref};
 
 use lazy_static::lazy_static;
 use pallas::{
@@ -391,6 +391,8 @@ impl NodeClientWrapper {
                                                 id: tx_input.hash().to_vec(),
                                                 index: tx_input.index(),
                                             })
+                                            .collect::<HashSet<_>>()
+                                            .into_iter()
                                             .collect(),
                                         outputs: tx_body
                                             .outputs()
