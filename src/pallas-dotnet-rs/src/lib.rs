@@ -594,7 +594,7 @@ fn plutus_data_to_keep_raw(plutus_data: &PlutusData) -> Vec<u8> {
 
 fn output_address_bytes(multi_era_output: &MultiEraOutput) -> Vec<u8> {
     match multi_era_output {
-        MultiEraOutput::AlonzoCompatible(x) => x.address.to_vec(),
+        MultiEraOutput::AlonzoCompatible(x, _) => x.address.to_vec(),
         MultiEraOutput::Babbage(x) => match x.deref().deref() {
             babbage::MintedTransactionOutput::Legacy(x) => x.address.to_vec(),
             babbage::MintedTransactionOutput::PostAlonzo(x) => x.address.to_vec(),
