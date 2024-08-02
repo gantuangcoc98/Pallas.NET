@@ -63,7 +63,7 @@ namespace PallasDotnetRs
             public ExUnits exUnits;
         }
         public struct ExUnits {
-            public uint mem;
+            public ulong mem;
             public ulong steps;
         }
         public struct NextResponse {
@@ -335,7 +335,7 @@ namespace PallasDotnetRs
         }
         [StructLayout(LayoutKind.Sequential)]
         private struct _StructExUnits {
-            public uint mem;
+            public ulong mem;
             public ulong steps;
             public static _StructExUnits Encode(ExUnits structArg) {
                 return new _StructExUnits {

@@ -126,7 +126,7 @@ pub struct Redeemer {
 
 #[derive(Net)]
 pub struct ExUnits {
-    pub mem: u32,
+    pub mem: u64,
     pub steps: u64,
 }
 

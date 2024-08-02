@@ -18,6 +18,8 @@ static double GetCurrentMemoryUsageInMB()
 
 var nodeClient = new NodeClient();
 var tip = await nodeClient.ConnectAsync("/tmp/node.socket", NetworkMagic.PREVIEW);
+
+
 nodeClient.Disconnected += (sender, args) =>
 {
     ConsoleHelper.WriteLine($"Disconnected ", ConsoleColor.DarkRed);
@@ -91,8 +93,8 @@ nodeClient.ChainSyncNextResponse += (sender, args) =>
 };
 
 await nodeClient.StartChainSyncAsync(new Point(
-    50778140,
-    new Hash("7ee32fbe980ea3e93c1a0d3aaa66f8960f8d24b4c1c9d1da0c645623ed791e53")
+    54131816,
+    new Hash("34c65aba4b299113a488b74e2efe3a3dd272d25b470d25f374b2c693d4386535")
 ));
 
 while (true)
