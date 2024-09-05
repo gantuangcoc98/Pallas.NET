@@ -17,11 +17,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="./build-rs.sh" />
-  </Target>
-
   <ItemGroup>
     <None Update="*.so">
       <Pack>true</Pack>
