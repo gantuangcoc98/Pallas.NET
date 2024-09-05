@@ -1,0 +1,81 @@
+name: Publish to NuGet
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup rnet-gen
+        run: cargo install rnet-gen
+
+      - name: Build Rust
+        run: cargo build --release --manifest-path "$(pwd)/src/pallas-dotnet-rs/Cargo.toml"
+
+      - name: Wrap Rust to C#
+        run: |
+          if [[ $RUNNER_OS == 'Linux' ]]; then
+            rnet-gen "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so" > "$(pwd)/src/pallas-dotnet/PallasDotnetWrapper.cs"
+          elif [[ $RUNNER_OS == 'macOS' ]]; then
+            rnet-gen "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.dylib" > "$(pwd)/src/pallas-dotnet/PallasDotnetWrapper.cs"
+          fi
+          
+      - name: Upload Linux artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-so
+          path: "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so"
+
+      - name: Upload MacOS artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dylib
+          path: "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.dylib"
+        
+  publish:
+    runs-on: ubuntu-latest
+
+    needs:  build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+    
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0'
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-so
+          path: "$(pwd)/src/pallas-dotnet"
+
+      - name: Download MacOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dylib
+          path: "$(pwd)/src/pallas-dotnet"
+          
+      - name: Execute publish script
+        run: |
+          chmod +x "$(pwd)/src/pallas-dotnet/publish.sh"
+          "$(pwd)/src/pallas-dotnet/publish.sh"
