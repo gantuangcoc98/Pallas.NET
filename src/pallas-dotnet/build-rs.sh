@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo $(pwd)
+
 # Function to build and copy for Linux
 build_for_linux() {
     cargo build --release --manifest-path ./src/pallas-dotnet-rs/Cargo.toml
