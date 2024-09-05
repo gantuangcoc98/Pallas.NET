@@ -76,6 +76,8 @@ jobs:
           path: "$(pwd)/src/pallas-dotnet"
           
       - name: Execute publish script
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
           chmod +x "$(pwd)/src/pallas-dotnet/publish.sh"
           "$(pwd)/src/pallas-dotnet/publish.sh"
