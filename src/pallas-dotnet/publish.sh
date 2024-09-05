@@ -1,7 +1,7 @@
 #!/bin/bash
 # Clean and build the project
-rm -rf ./bin
-rm -rf ./obj
+rm -rf ./src/pallas-dotnet/bin
+rm -rf ./src/pallas-dotnet/obj
 
 dotnet clean
 dotnet build --configuration Release
@@ -9,7 +9,7 @@ dotnet build --configuration Release
 # Pack your project
 dotnet pack --configuration Release
 
-PACKAGE_FILE=$(find ./bin/Release -name "*.nupkg" | head -n 1)
+PACKAGE_FILE=$(find ./src/pallas-dotnet/bin/Release -name "*.nupkg" | head -n 1)
 
 if [ -z "$PACKAGE_FILE" ]; then
     echo "No .nupkg file found."
