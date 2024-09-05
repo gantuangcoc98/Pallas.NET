@@ -64,6 +64,9 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '8.0'
+          
+      - name: Setup rnet-gen
+        run: cargo install rnet-gen
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
