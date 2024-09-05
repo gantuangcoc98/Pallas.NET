@@ -81,5 +81,6 @@ jobs:
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
+          chmod +x ${{ github.workspace }}/src/pallas-dotnet/build-rs.sh
           chmod +x ${{ github.workspace }}/src/pallas-dotnet/publish.sh
           ${{ github.workspace }}/src/pallas-dotnet/publish.sh
