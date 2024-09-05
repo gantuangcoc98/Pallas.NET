@@ -17,5 +17,4 @@ if [ -z "$PACKAGE_FILE" ]; then
 fi
 
 echo "Found package file: $PACKAGE_FILE"
-echo ${NUGET_API_KEY}
 dotnet nuget push "$PACKAGE_FILE" --api-key ${NUGET_API_KEY} --source https://api.nuget.org/v3/index.json
