@@ -25,14 +25,16 @@ jobs:
         run: cargo install rnet-gen
 
       - name: Build Rust
-        run: cargo build --release --manifest-path "$(pwd)/src/pallas-dotnet-rs/Cargo.toml"
+        run: cargo build --release --manifest-path ${{ github.workspace }}/src/pallas-dotnet-rs/Cargo.toml
 
       - name: Wrap Rust to C#
         run: |
           if [[ $RUNNER_OS == 'Linux' ]]; then
-            rnet-gen "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so" > "$(pwd)/src/pallas-dotnet/PallasDotnetWrapper.cs"
+            rnet-gen ${{ github.workspace }}/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so > ${{ github.workspace }}/src/pallas-dotnet/PallasDotnetWrapper.cs
+            echo "Wrapped .so file to C#"
           elif [[ $RUNNER_OS == 'macOS' ]]; then
-            rnet-gen "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.dylib" > "$(pwd)/src/pallas-dotnet/PallasDotnetWrapper.cs"
+            rnet-gen ${{ github.workspace }}/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.dylib > ${{ github.workspace }}/src/pallas-dotnet/PallasDotnetWrapper.cs
+            echo "Wrapped .dylib file to C#"
           fi
           
       - name: Upload Linux artifact
@@ -40,14 +42,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-so
-          path: "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so"
+          path: ${{ github.workspace }}/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.so
 
       - name: Upload MacOS artifact
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: macos-dylib
-          path: "$(pwd)/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.dylib"
+          path: ${{ github.workspace }}/src/pallas-dotnet-rs/target/release/libpallas_dotnet_rs.dylib
         
   publish:
     runs-on: ubuntu-latest
@@ -67,17 +69,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: linux-so
-          path: "$(pwd)/src/pallas-dotnet"
+          path: ${{ github.workspace }}/src/pallas-dotnet
 
       - name: Download MacOS artifact
         uses: actions/download-artifact@v4
         with:
           name: macos-dylib
-          path: "$(pwd)/src/pallas-dotnet"
+          path: ${{ github.workspace }}/src/pallas-dotnet
           
       - name: Execute publish script
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          chmod +x "$(pwd)/src/pallas-dotnet/publish.sh"
-          "$(pwd)/src/pallas-dotnet/publish.sh"
+          chmod +x ${{ github.workspace }}/src/pallas-dotnet/publish.sh
+          ${{ github.workspace }}/src/pallas-dotnet/publish.sh
