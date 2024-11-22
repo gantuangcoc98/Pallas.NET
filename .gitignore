@@ -2,3 +2,6 @@
 **/obj/**
 .mono/
 .DS_STORE
+
+**/appsettings.json
+**/lib

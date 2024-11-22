@@ -67,9 +67,9 @@ namespace PallasDotnetRs
         }
         public static Point FindIntersect(
             ClientWrapper clientWrapper,
-            Point knownPoint
+            IReadOnlyCollection<Point> points
         ) {
-            return _DecodeOption(_FnFindIntersect(_StructClientWrapper.Encode(clientWrapper),_StructPoint.Encode(knownPoint)), _arg3 => (_arg3).Decode());
+            return _DecodeOption(_FnFindIntersect(_StructClientWrapper.Encode(clientWrapper),_AllocSlice<Point, _StructPoint>(points, 24, 8, _arg3 => _StructPoint.Encode(_arg3))), _arg4 => (_arg4).Decode());
         }
         public static NextResponse ChainSyncNext(
             ClientWrapper clientWrapper
@@ -85,19 +85,19 @@ namespace PallasDotnetRs
             ClientWrapper clientWrapper,
             Point point
         ) {
-            return _DecodeOption(_FnFetchBlock(_StructClientWrapper.Encode(clientWrapper),_StructPoint.Encode(point)), _arg4 => _FreeSlice<byte, byte, List<byte>>(_arg4, 1, 1, _arg5 => _arg5));
+            return _DecodeOption(_FnFetchBlock(_StructClientWrapper.Encode(clientWrapper),_StructPoint.Encode(point)), _arg5 => _FreeSlice<byte, byte, List<byte>>(_arg5, 1, 1, _arg6 => _arg6));
         }
         public static List<byte> SubmitTx(
             string server,
             ulong magic,
             IReadOnlyCollection<byte> tx
         ) {
-            return _FreeSlice<byte, byte, List<byte>>(_FnSubmitTx(_AllocStr(server),magic,_AllocSlice<byte, byte>(tx, 1, 1, _arg6 => _arg6)), 1, 1, _arg7 => _arg7);
+            return _FreeSlice<byte, byte, List<byte>>(_FnSubmitTx(_AllocStr(server),magic,_AllocSlice<byte, byte>(tx, 1, 1, _arg7 => _arg7)), 1, 1, _arg8 => _arg8);
         }
         public static string AddressBytesToBech32(
             IReadOnlyCollection<byte> addressBytes
         ) {
-            return _FreeStr(_FnAddressBytesToBech32(_AllocSlice<byte, byte>(addressBytes, 1, 1, _arg8 => _arg8)));
+            return _FreeStr(_FnAddressBytesToBech32(_AllocSlice<byte, byte>(addressBytes, 1, 1, _arg9 => _arg9)));
         }
         [StructLayout(LayoutKind.Sequential)]
         private struct _StructNetworkMagic {
@@ -117,13 +117,13 @@ namespace PallasDotnetRs
             public static _StructPoint Encode(Point structArg) {
                 return new _StructPoint {
                     slot = structArg.slot,
-                    hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg9 => _arg9)
+                    hash = _AllocSlice<byte, byte>(structArg.hash, 1, 1, _arg10 => _arg10)
                 };
             }
             public Point Decode() {
                 return new Point {
                     slot = this.slot,
-                    hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg10 => _arg10)
+                    hash = _FreeSlice<byte, byte, List<byte>>(this.hash, 1, 1, _arg11 => _arg11)
                 };
             }
         }
@@ -135,15 +135,15 @@ namespace PallasDotnetRs
             public static _StructNextResponse Encode(NextResponse structArg) {
                 return new _StructNextResponse {
                     action = structArg.action,
-                    tip = _EncodeOption(structArg.tip, _arg11 => _StructPoint.Encode(_arg11)),
-                    blockCbor = _EncodeOption(structArg.blockCbor, _arg12 => _AllocSlice<byte, byte>(_arg12, 1, 1, _arg13 => _arg13))
+                    tip = _EncodeOption(structArg.tip, _arg12 => _StructPoint.Encode(_arg12)),
+                    blockCbor = _EncodeOption(structArg.blockCbor, _arg13 => _AllocSlice<byte, byte>(_arg13, 1, 1, _arg14 => _arg14))
                 };
             }
             public NextResponse Decode() {
                 return new NextResponse {
                     action = this.action,
-                    tip = _DecodeOption(this.tip, _arg14 => (_arg14).Decode()),
-                    blockCbor = _DecodeOption(this.blockCbor, _arg15 => _FreeSlice<byte, byte, List<byte>>(_arg15, 1, 1, _arg16 => _arg16))
+                    tip = _DecodeOption(this.tip, _arg15 => (_arg15).Decode()),
+                    blockCbor = _DecodeOption(this.blockCbor, _arg16 => _FreeSlice<byte, byte, List<byte>>(_arg16, 1, 1, _arg17 => _arg17))
                 };
             }
         }
@@ -205,7 +205,7 @@ namespace PallasDotnetRs
         [DllImport("pallas_dotnet_rs", EntryPoint = "rnet_export_find_intersect", CallingConvention = CallingConvention.Cdecl)]
         private static extern _RawTuple0 _FnFindIntersect(
             _StructClientWrapper clientWrapper,
-            _StructPoint knownPoint
+            _RawSlice points
         );
         [DllImport("pallas_dotnet_rs", EntryPoint = "rnet_export_chain_sync_next", CallingConvention = CallingConvention.Cdecl)]
         private static extern _StructNextResponse _FnChainSyncNext(
