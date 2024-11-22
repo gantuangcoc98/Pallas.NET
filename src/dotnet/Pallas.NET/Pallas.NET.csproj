@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>tan.Pallas.NET</PackageId>
-    <Version>0.2.2</Version>
+    <Version>0.2.3</Version>
     <VersionSuffix>beta</VersionSuffix>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -10,7 +10,7 @@
 
   <PropertyGroup>
     <AssemblyName>Pallas.NET</AssemblyName>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>PallasDotnet</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -39,17 +39,19 @@
   </ItemGroup>
 
     <ItemGroup>
-    <Content Include="libpallas_dotnet_rs.so">
+    <Content Include="lib/libpallas_dotnet_rs.so">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <PackageCopyToOutput>true</PackageCopyToOutput>
+      <PackagePath>runtimes/linux-x64/native</PackagePath>
       <pack>true</pack>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="libpallas_dotnet_rs.dylib">
+    <Content Include="lib/libpallas_dotnet_rs.dylib">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <PackageCopyToOutput>true</PackageCopyToOutput>
+      <PackagePath>runtimes/aarch64/native</PackagePath>
       <pack>true</pack>
     </Content>
   </ItemGroup>

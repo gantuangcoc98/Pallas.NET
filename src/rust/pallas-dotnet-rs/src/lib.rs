@@ -1,20 +1,25 @@
-use std::{ 
-    ops::Deref, vec
-};
 use lazy_static::lazy_static;
 use pallas::{
+    codec::utils::KeyValuePairs,
     ledger::{
         addresses::{Address, ByronAddress},
-        traverse::{MultiEraHeader, MultiEraTx},
+        primitives::conway::{self, VrfCert},
+        traverse::{MultiEraBlock, MultiEraHeader, MultiEraTx},
     },
     network::{
         facades::{NodeClient, PeerClient},
         miniprotocols::{
-            blockfetch, chainsync::{self}, localstate::queries_v16::{self, Addr}, txsubmission::{self, EraTxBody, TxIdAndSize}, Point as PallasPoint, MAINNET_MAGIC, PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC, TESTNET_MAGIC
-        }
+            blockfetch,
+            chainsync::{self},
+            localstate::queries_v16::{self, Addr},
+            txsubmission::{self, EraTxBody, TxIdAndSize},
+            Point as PallasPoint, MAINNET_MAGIC, PREVIEW_MAGIC, PRE_PRODUCTION_MAGIC,
+            TESTNET_MAGIC,
+        },
     },
 };
 use rnet::{net, Net};
+use std::{ops::Deref, vec};
 use tokio::runtime::Runtime;
 
 rnet::root!();
@@ -54,6 +59,16 @@ pub struct Point {
     hash: Vec<u8>,
 }
 
+impl Point {
+    fn to_pallas_point(&self) -> PallasPoint {
+        if self.slot == 0 && self.hash.is_empty() {
+            PallasPoint::Origin
+        } else {
+            PallasPoint::Specific(self.slot, self.hash.clone())
+        }
+    }
+}
+
 #[derive(Net)]
 pub struct NextResponse {
     action: u8,
@@ -63,13 +78,13 @@ pub struct NextResponse {
 
 pub enum Client {
     N2C(NodeClient),
-    N2N(PeerClient)
+    N2N(PeerClient),
 }
 
 #[derive(Net)]
 pub struct ClientWrapper {
     client: u8,
-    client_ptr: usize
+    client_ptr: usize,
 }
 
 impl ClientWrapper {
@@ -81,12 +96,16 @@ impl ClientWrapper {
     pub fn connect(path_or_server: String, network_magic: u64, client: u8) -> ClientWrapper {
         let _client = match client {
             1 => Client::N2C(RT.block_on(async {
-                NodeClient::connect(path_or_server, network_magic).await.unwrap()
+                NodeClient::connect(path_or_server, network_magic)
+                    .await
+                    .unwrap()
             })),
             2 => Client::N2N(RT.block_on(async {
-                PeerClient::connect(path_or_server, network_magic).await.unwrap()
+                PeerClient::connect(path_or_server, network_magic)
+                    .await
+                    .unwrap()
             })),
-            _ => panic!("cannot establish connection: unknown client type")
+            _ => panic!("cannot establish connection: unknown client type"),
         };
 
         match _client {
@@ -96,7 +115,7 @@ impl ClientWrapper {
                 let client_ptr = Box::into_raw(node_client_box) as usize;
 
                 ClientWrapper { client, client_ptr }
-            },
+            }
             Client::N2N(peer_client) => {
                 let peer_client_box = Box::new(peer_client);
 
@@ -117,30 +136,30 @@ impl ClientWrapper {
                 1 => {
                     let client_ptr = client_wrapper.client_ptr as *mut NodeClient;
                     let mut client = Box::from_raw(client_ptr);
-    
+
                     // Query Utxo by address cbor
                     let utxos_by_address_cbor = RT.block_on(async {
                         let client = client.statequery();
-        
+
                         client.send_reacquire(None).await.unwrap();
                         client.recv_while_acquiring().await.unwrap();
-        
+
                         let era = queries_v16::get_current_era(client).await.unwrap();
                         let addrz: Address = Address::from_bech32(&address).unwrap();
                         let addrz: Addr = addrz.to_vec().into();
                         let query = queries_v16::BlockQuery::GetUTxOByAddress(vec![addrz]);
                         queries_v16::get_cbor(client, era, query).await.unwrap()
                     });
-        
+
                     // Convert client back to a raw pointer for future use
                     let _ = Box::into_raw(client);
-        
+
                     utxos_by_address_cbor
                         .into_iter()
                         .map(|tag_wrap_instance| tag_wrap_instance.0.deref().clone())
                         .collect()
-                },
-                _ => panic!("unknown client type for get_utxo_by_address_cbor")
+                }
+                _ => panic!("unknown client type for get_utxo_by_address_cbor"),
             }
         }
     }
@@ -152,21 +171,21 @@ impl ClientWrapper {
                 1 => {
                     let client_ptr = client_wrapper.client_ptr as *mut NodeClient;
                     let mut client = Box::from_raw(client_ptr);
-        
+
                     // Get the tip using StateQuery Protocol
                     let tip = RT.block_on(async {
                         let state_query_client = client.statequery();
-        
+
                         state_query_client.acquire(None).await.unwrap();
-        
+
                         queries_v16::get_chain_point(state_query_client)
                             .await
                             .unwrap()
                     });
-        
+
                     // Convert client back to a raw pointer for future use
                     let _ = Box::into_raw(client);
-        
+
                     match tip {
                         PallasPoint::Origin => Point {
                             slot: 0,
@@ -174,53 +193,64 @@ impl ClientWrapper {
                         },
                         PallasPoint::Specific(slot, hash) => Point { slot, hash },
                     }
-                },
+                }
                 2 => {
                     let client_ptr = client_wrapper.client_ptr as *mut PeerClient;
                     let mut client = Box::from_raw(client_ptr);
-        
+
                     // Get the tip using ChainSync Protocol
-                    let tip = RT.block_on(async {
-                        client.chainsync().intersect_tip().await.unwrap()
-                    });
-        
+                    let tip =
+                        RT.block_on(async { client.chainsync().intersect_tip().await.unwrap() });
+
                     let _ = Box::into_raw(client);
-        
+
                     match tip {
-                        PallasPoint::Origin => Point { slot: 0, hash: vec![] },
-                        PallasPoint::Specific(slot, hash) => Point { slot, hash }
+                        PallasPoint::Origin => Point {
+                            slot: 0,
+                            hash: vec![],
+                        },
+                        PallasPoint::Specific(slot, hash) => Point { slot, hash },
                     }
-                },
-                _ => panic!("unknown client type for get_tip")
+                }
+                _ => panic!("unknown client type for get_tip"),
             }
         }
     }
 
     #[net]
-    pub fn find_intersect(client_wrapper: ClientWrapper, known_point: Point) -> Option<Point> {
-        ClientWrapper::find_intersect(client_wrapper, known_point)
+    pub fn find_intersect(client_wrapper: ClientWrapper, points: Vec<Point>) -> Option<Point> {
+        let _points = points
+            .into_iter()
+            .map(|p| match p.slot {
+                0 => PallasPoint::Origin,
+                _ => PallasPoint::Specific(p.slot, p.hash)
+            })
+            .collect();
+
+        ClientWrapper::find_intersect(client_wrapper, _points)
     }
 
-    pub fn find_intersect(client_wrapper: ClientWrapper, known_point: Point) -> Option<Point> {
+    pub fn find_intersect(client_wrapper: ClientWrapper, points: Vec<PallasPoint>) -> Option<Point> {
         unsafe {
             match client_wrapper.client {
                 1 => {
                     let client_ptr = client_wrapper.client_ptr as *mut NodeClient;
 
                     // Convert the raw pointer back to a Box to deallocate the memory
-                    let mut _client = Box::from_raw(client_ptr);
+                    let mut client = Box::from_raw(client_ptr);
 
-                    let client = _client.chainsync();
-        
-                    let known_points = vec![PallasPoint::Specific(known_point.slot, known_point.hash)];
-        
                     // Get the intersecting point and the tip
-                    let (intersect_point, _tip) =
-                        RT.block_on(async { client.find_intersect(known_points).await.unwrap() });
-        
+                    let (intersect_point, _tip) = RT.block_on(async { 
+                        client
+                            .chainsync()
+                            .find_intersect(points)
+                            .await
+                            .unwrap() 
+                    });
+
                     // Convert client back to a raw pointer for future use
-                    let _ = Box::into_raw(_client);
-        
+                    let _ = Box::into_raw(client);
+
                     // Match on the intersecting point
                     intersect_point.map(|pallas_point| match pallas_point {
                         PallasPoint::Origin => Point {
@@ -229,19 +259,21 @@ impl ClientWrapper {
                         },
                         PallasPoint::Specific(slot, hash) => Point { slot, hash },
                     })
-                },
+                }
                 2 => {
                     let client_ptr = client_wrapper.client_ptr as *mut PeerClient;
                     let mut client = Box::from_raw(client_ptr);
-        
-                    let known_points = vec![PallasPoint::Specific(known_point.slot, known_point.hash)];
-        
+
                     let (intersect_point, _) = RT.block_on(async {
-                        client.chainsync().find_intersect(known_points).await.unwrap()
+                        client
+                            .chainsync()
+                            .find_intersect(points)
+                            .await
+                            .unwrap()
                     });
-        
+
                     let _ = Box::into_raw(client);
-        
+
                     intersect_point.map(|pallas_point| match pallas_point {
                         PallasPoint::Origin => Point {
                             slot: 0,
@@ -249,8 +281,8 @@ impl ClientWrapper {
                         },
                         PallasPoint::Specific(slot, hash) => Point { slot, hash },
                     })
-                },
-                _ => panic!("unknown client type for find_intersect")
+                }
+                _ => panic!("unknown client type for find_intersect"),
             }
         }
     }
@@ -262,7 +294,7 @@ impl ClientWrapper {
                 1 => {
                     let client_ptr = client_wrapper.client_ptr as *mut NodeClient;
                     let mut client = Box::from_raw(client_ptr);
-        
+
                     // Get the next block
                     let result = RT.block_on(async {
                         if client.chainsync().has_agency() {
@@ -273,7 +305,7 @@ impl ClientWrapper {
                             client.chainsync().recv_while_must_reply().await
                         }
                     });
-        
+
                     let next_response = match result {
                         Ok(next) => match next {
                             chainsync::NextResponse::RollForward(block, tip) => NextResponse {
@@ -285,9 +317,45 @@ impl ClientWrapper {
                                     }),
                                     PallasPoint::Specific(slot, hash) => Some(Point { slot, hash }),
                                 },
-                                block_cbor: Some(block.0),
+                                block_cbor: {
+                                    let multiera_block =
+                                        MultiEraBlock::decode(&block.0).expect("Decoding failed");
+                                    match multiera_block {
+                                        MultiEraBlock::Byron(block) => {
+                                            let block_cbor =
+                                                pallas::codec::minicbor::to_vec(&block)
+                                                    .expect("Serialization failed");
+                                            Some(block_cbor)
+                                        }
+                                        MultiEraBlock::AlonzoCompatible(block, _) => {
+                                            let block_cbor =
+                                                pallas::codec::minicbor::to_vec(&block)
+                                                    .expect("Serialization failed");
+                                            Some(block_cbor)
+                                        }
+                                        MultiEraBlock::Babbage(block) => {
+                                            let block_cbor =
+                                                pallas::codec::minicbor::to_vec(&block)
+                                                    .expect("Serialization failed");
+                                            Some(block_cbor)
+                                        }
+                                        MultiEraBlock::EpochBoundary(block) => {
+                                            let block_cbor =
+                                                pallas::codec::minicbor::to_vec(&block)
+                                                    .expect("Serialization failed");
+                                            Some(block_cbor)
+                                        }
+                                        MultiEraBlock::Conway(block) => {
+                                            let block_cbor =
+                                                pallas::codec::minicbor::to_vec(&block)
+                                                    .expect("Serialization failed");
+                                            Some(block_cbor)
+                                        }
+                                        _ => None,
+                                    }
+                                },
                             },
-                            chainsync::NextResponse::RollBackward(_, tip) => NextResponse {
+                            chainsync::NextResponse::RollBackward(point, tip) => NextResponse {
                                 action: 2,
                                 tip: match tip.0 {
                                     PallasPoint::Origin => Some(Point {
@@ -296,7 +364,54 @@ impl ClientWrapper {
                                     }),
                                     PallasPoint::Specific(slot, hash) => Some(Point { slot, hash }),
                                 },
-                                block_cbor: None
+                                block_cbor: {
+                                    let block = conway::Block {
+                                        header: conway::Header {
+                                            header_body: conway::HeaderBody {
+                                                block_number: 0,
+                                                slot: point.slot_or_default(),
+                                                prev_hash: None,
+                                                issuer_vkey: pallas::codec::utils::Bytes::from(
+                                                    vec![],
+                                                ),
+                                                vrf_vkey: pallas::codec::utils::Bytes::from(vec![]),
+                                                vrf_result: VrfCert(
+                                                    pallas::codec::utils::Bytes::from(vec![]),
+                                                    pallas::codec::utils::Bytes::from(vec![]),
+                                                ),
+                                                block_body_size: 0,
+                                                block_body_hash: pallas::crypto::hash::Hash::new(
+                                                    [0; 32],
+                                                ),
+                                                operational_cert: conway::OperationalCert {
+                                                    operational_cert_hot_vkey:
+                                                        pallas::codec::utils::Bytes::from(vec![]),
+                                                    operational_cert_sequence_number: 0,
+                                                    operational_cert_kes_period: 0,
+                                                    operational_cert_sigma:
+                                                        pallas::codec::utils::Bytes::from(vec![]),
+                                                },
+                                                protocol_version: (9, 0),
+                                            },
+                                            body_signature: pallas::codec::utils::Bytes::from(
+                                                vec![],
+                                            ),
+                                        },
+                                        transaction_bodies:
+                                            pallas::codec::utils::MaybeIndefArray::Def(vec![]),
+                                        transaction_witness_sets:
+                                            pallas::codec::utils::MaybeIndefArray::Def(vec![]),
+                                        auxiliary_data_set: KeyValuePairs::Def(vec![]),
+                                        invalid_transactions: Some(
+                                            pallas::codec::utils::MaybeIndefArray::Def(vec![]),
+                                        ),
+                                    };
+
+                                    let block_cbor = pallas::codec::minicbor::to_vec(&block)
+                                        .expect("Serialization failed");
+
+                                    Some(block_cbor)
+                                },
                             },
                             chainsync::NextResponse::Await => NextResponse {
                                 action: 3,
@@ -313,16 +428,16 @@ impl ClientWrapper {
                             }
                         }
                     };
-        
+
                     // Convert client back to a raw pointer for future use
                     let _ = Box::into_raw(client);
-        
+
                     next_response
-                },
+                }
                 2 => {
                     let client_ptr = client_wrapper.client_ptr as *mut PeerClient;
                     let mut client = Box::from_raw(client_ptr);
-        
+
                     // Get the next block
                     let result = RT.block_on(async {
                         if client.chainsync().has_agency() {
@@ -333,33 +448,81 @@ impl ClientWrapper {
                             client.chainsync().recv_while_must_reply().await
                         }
                     });
-        
+
                     let next_response = match result {
                         Ok(next) => match next {
-                            chainsync::NextResponse::RollForward(header, tip) => match MultiEraHeader::decode(header.variant, None, &header.cbor) {
-                                Ok(h) => NextResponse {
-                                    action: 1,
-                                    tip: match tip.0 {
-                                        PallasPoint::Origin => Some(Point {
-                                            slot: 0,
-                                            hash: vec![]
-                                        }),
-                                        PallasPoint::Specific(slot, hash) => Some(Point { slot, hash })
+                            chainsync::NextResponse::RollForward(header, tip) => {
+                                match MultiEraHeader::decode(header.variant, None, &header.cbor) {
+                                    Ok(h) => NextResponse {
+                                        action: 1,
+                                        tip: match tip.0 {
+                                            PallasPoint::Origin => Some(Point {
+                                                slot: 0,
+                                                hash: vec![],
+                                            }),
+                                            PallasPoint::Specific(slot, hash) => {
+                                                Some(Point { slot, hash })
+                                            }
+                                        },
+                                        block_cbor: {
+                                            {
+                                                let block = ClientWrapper::fetch_block(
+                                                    &mut client.blockfetch,
+                                                    Point {
+                                                        slot: h.slot(),
+                                                        hash: h.hash().to_vec(),
+                                                    },
+                                                )
+                                                .unwrap();
+
+                                                let multiera_block = MultiEraBlock::decode(&block)
+                                                    .expect("Decoding failed");
+                                                match multiera_block {
+                                                    MultiEraBlock::Byron(block) => {
+                                                        let block_cbor =
+                                                            pallas::codec::minicbor::to_vec(&block)
+                                                                .expect("Serialization failed");
+                                                        Some(block_cbor)
+                                                    }
+                                                    MultiEraBlock::AlonzoCompatible(block, _) => {
+                                                        let block_cbor =
+                                                            pallas::codec::minicbor::to_vec(&block)
+                                                                .expect("Serialization failed");
+                                                        Some(block_cbor)
+                                                    }
+                                                    MultiEraBlock::Babbage(block) => {
+                                                        let block_cbor =
+                                                            pallas::codec::minicbor::to_vec(&block)
+                                                                .expect("Serialization failed");
+                                                        Some(block_cbor)
+                                                    }
+                                                    MultiEraBlock::EpochBoundary(block) => {
+                                                        let block_cbor =
+                                                            pallas::codec::minicbor::to_vec(&block)
+                                                                .expect("Serialization failed");
+                                                        Some(block_cbor)
+                                                    }
+                                                    MultiEraBlock::Conway(block) => {
+                                                        let block_cbor =
+                                                            pallas::codec::minicbor::to_vec(&block)
+                                                                .expect("Serialization failed");
+                                                        Some(block_cbor)
+                                                    }
+                                                    _ => None,
+                                                }
+                                            }
+                                        },
                                     },
-                                    block_cbor: ClientWrapper::fetch_block(&mut client.blockfetch, Point {
-                                        slot: h.slot(),
-                                        hash: h.hash().to_vec()
-                                    })
-                                },
-                                Err(e) => {
-                                    println!("chain_sync_next error: {:?}", e);
-                                    NextResponse {
-                                        action: 0,
-                                        tip: None,
-                                        block_cbor: None
+                                    Err(e) => {
+                                        println!("chain_sync_next error: {:?}", e);
+                                        NextResponse {
+                                            action: 0,
+                                            tip: None,
+                                            block_cbor: None,
+                                        }
                                     }
                                 }
-                            },
+                            }
                             chainsync::NextResponse::RollBackward(point, tip) => NextResponse {
                                 action: 2,
                                 tip: match tip.0 {
@@ -367,18 +530,29 @@ impl ClientWrapper {
                                         slot: 0,
                                         hash: vec![],
                                     }),
-                                    PallasPoint::Specific(slot, hash) => Some(Point { slot, hash}),
+                                    PallasPoint::Specific(slot, hash) => Some(Point { slot, hash }),
                                 },
                                 block_cbor: match point {
-                                    PallasPoint::Origin => ClientWrapper::fetch_block(&mut client.blockfetch, Point { slot: 0, hash: vec![] }),
-                                    PallasPoint::Specific(slot, hash) => ClientWrapper::fetch_block(&mut client.blockfetch, Point { slot, hash })
-                                }
+                                    PallasPoint::Origin => ClientWrapper::fetch_block(
+                                        &mut client.blockfetch,
+                                        Point {
+                                            slot: 0,
+                                            hash: vec![],
+                                        },
+                                    ),
+                                    PallasPoint::Specific(slot, hash) => {
+                                        ClientWrapper::fetch_block(
+                                            &mut client.blockfetch,
+                                            Point { slot, hash },
+                                        )
+                                    }
+                                },
                             },
                             chainsync::NextResponse::Await => NextResponse {
                                 action: 3,
                                 tip: None,
-                                block_cbor: None
-                            }
+                                block_cbor: None,
+                            },
                         },
                         Err(e) => {
                             println!("chain_sync_next error: {:?}", e);
@@ -389,12 +563,12 @@ impl ClientWrapper {
                             }
                         }
                     };
-        
+
                     let _ = Box::into_raw(client);
-        
+
                     next_response
-                },
-                _ => panic!("unknown client type for chain_sync_next")
+                }
+                _ => panic!("unknown client type for chain_sync_next"),
             }
         }
     }
@@ -405,23 +579,23 @@ impl ClientWrapper {
             match client_wrapper.client {
                 1 => {
                     let client_ptr = client_wrapper.client_ptr as *mut NodeClient;
-        
+
                     let mut _client = Box::from_raw(client_ptr);
-        
-                    RT.block_on(async {
-                        _client.abort().await;
-                    });
-                },
-                2 => {
-                    let client_ptr = client_wrapper.client_ptr as *mut PeerClient;
-        
-                    let mut _client = Box::from_raw(client_ptr);
-        
+
                     RT.block_on(async {
                         _client.abort().await;
                     });
                 }
-                _ => panic!("unknown client type for disconnect")
+                2 => {
+                    let client_ptr = client_wrapper.client_ptr as *mut PeerClient;
+
+                    let mut _client = Box::from_raw(client_ptr);
+
+                    RT.block_on(async {
+                        _client.abort().await;
+                    });
+                }
+                _ => panic!("unknown client type for disconnect"),
             }
         }
     }
@@ -433,21 +607,27 @@ impl ClientWrapper {
                 2 => {
                     let client_ptr = client_wrapper.client_ptr as *mut PeerClient;
                     let mut client = Box::from_raw(client_ptr);
-        
+
                     let block = ClientWrapper::fetch_block(&mut client.blockfetch, point);
 
                     let _ = Box::into_raw(client);
 
                     block
-                },
-                _ => panic!("unkown client type for fetch_block")
+                }
+                _ => panic!("unkown client type for fetch_block"),
             }
         }
     }
 
-    pub fn fetch_block(block_fetch_client: &mut blockfetch::Client, point: Point) -> Option<Vec<u8>> {
+    pub fn fetch_block(
+        block_fetch_client: &mut blockfetch::Client,
+        point: Point,
+    ) -> Option<Vec<u8>> {
         Some(RT.block_on(async {
-            block_fetch_client.fetch_single(PallasPoint::Specific(point.slot, point.hash)).await.unwrap()
+            block_fetch_client
+                .fetch_single(PallasPoint::Specific(point.slot, point.hash))
+                .await
+                .unwrap()
         }))
     }
 
@@ -549,5 +729,9 @@ impl PallasUtility {
                 .unwrap()
                 .to_base58(),
         }
+    }
+
+    pub fn map_points_to_pallas(points: Vec<Point>) -> Vec<PallasPoint> {
+        points.into_iter().map(|p| p.to_pallas_point()).collect()
     }
 }
